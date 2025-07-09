@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рассылка сообщений - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Планировщик рассылок</h1>
+            <a href="/" class="back-link">← Главная</a>
+        </div>
+        
+        <div class="broadcast-setup">
+            <h2>Создание новой рассылки</h2>
+            
+            <div class="message-section">
+                <label for="broadcastMessage">Текст сообщения:</label>
+                <textarea id="broadcastMessage" placeholder="Введите текст сообщения для рассылки" rows="4"></textarea>
+            </div>
+            
+            <div class="groups-section">
+                <div class="groups-header">
+                    <h3>Выберите группы для рассылки</h3>
+                    <div class="groups-actions">
+                        <button id="selectAllBroadcast" class="small-btn">Выбрать все</button>
+                        <button id="clearBroadcastSelection" class="small-btn">Снять все</button>
+                        <span id="broadcastGroupsCounter" class="groups-counter">Выбрано: 0</span>
+                    </div>
+                </div>
+                <div id="broadcastGroupsList"></div>
+            </div>
+            
+            <div class="schedule-section">
+                <h3>Настройки расписания</h3>
+                <div class="schedule-inputs">
+                    <div class="input-group">
+                        <label for="startDate">Дата начала:</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="input-group">
+                        <label for="startTime">Время начала:</label>
+                        <input type="time" id="startTime">
+                    </div>
+                    <div class="input-group">
+                        <label for="frequency">Периодичность:</label>
+                        <select id="frequency">
+                            <option value="once">Один раз</option>
+                            <option value="hourly">Каждый час</option>
+                            <option value="2hourly">Каждые 2 часа</option>
+                            <option value="4hourly">Каждые 4 часа</option>
+                            <option value="daily">Каждый день</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="createBroadcast" class="start-btn">Создать задание</button>
+            </div>
+        </div>
+        
+        <div class="broadcast-tasks">
+            <h2>Активные задания рассылки</h2>
+            <div id="tasksList"></div>
+        </div>
+    </div>
+    
+    <script src="broadcast.js"></script>
+</body>
+</html>

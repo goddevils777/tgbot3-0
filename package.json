@@ -12,9 +12,12 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "dotenv": "^17.1.0",
     "express": "^5.1.0",
-    "node-telegram-bot-api": "^0.66.0"
+    "input": "^1.0.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "telegram": "^2.26.22"
   },
   "devDependencies": {
     "install": "^0.13.0",

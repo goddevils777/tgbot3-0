@@ -8,10 +8,19 @@
 </head>
 <body>
     <div class="container">
-        <h1>Поиск сообщений в Telegram</h1>
+        <div class="header">
+            <h1>Поиск сообщений в Telegram</h1>
+            <div class="header-links">
+                <a href="/autosearch.html" class="back-link">Автопоиск →</a>
+                <a href="/broadcast.html" class="back-link">Рассылка →</a>
+            </div>
+        </div>
         
         <div class="search-section">
-            <input type="text" id="searchInput" placeholder="Введите ключевое слово">
+            <div class="keywords-container">
+                <input type="text" id="searchInput" placeholder="Введите слово и нажмите пробел">
+                <div id="keywordsList" class="keywords-list"></div>
+            </div>
             <input type="number" id="messageCount" placeholder="Количество сообщений" value="100" min="1" max="10000">
             <button id="searchBtn">Искать</button>
         </div>
@@ -26,6 +35,14 @@
                 </div>
             </div>
             <div id="groupsList"></div>
+        </div>
+
+        <div class="ai-section" style="display: none;">
+            <h2>AI Анализ найденных сообщений</h2>
+            <div class="ai-input-section">
+                <textarea id="aiPrompt" placeholder="Введите промпт для AI анализа (например: Содержит ли это сообщение информацию о продаже товаров?)"></textarea>
+                <button id="analyzeBtn">Анализировать через AI</button>
+            </div>
         </div>
         
         <div class="results-section">

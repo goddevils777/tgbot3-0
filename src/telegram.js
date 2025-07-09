@@ -20,8 +20,6 @@ class TelegramClient {
     }
 
     async getMyChats() {
-        // Bot API не может получить список чатов
-        // Вернём заглушку, чаты нужно будет добавить вручную
         return [
             { id: -1001234567890, name: 'Тестовая группа 1' },
             { id: -1009876543210, name: 'Тестовая группа 2' }
@@ -30,7 +28,6 @@ class TelegramClient {
 
     async searchMessages(keyword, groups, limit) {
         console.log(`Поиск "${keyword}" в ${groups.length} группах`);
-        // Заглушка для поиска
         return [];
     }
 }

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Автопоиск - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Автопоиск сообщений в реальном времени</h1>
+            <a href="/" class="back-link">← Вернуться к обычному поиску</a>
+        </div>
+        
+        <div class="autosearch-setup">
+            <div class="keywords-container">
+                <h2>Ключевые слова</h2>
+                <input type="text" id="autoSearchInput" class="search-input" placeholder="Введите слово и нажмите пробел">
+                <div id="autoKeywordsList" class="keywords-list"></div>
+            </div>
+            
+            <div class="groups-header">
+                <h2>Выберите группы для мониторинга</h2>
+                <div class="groups-actions">
+                    <button id="selectAllAuto" class="small-btn">Выбрать все</button>
+                    <button id="clearAutoSelection" class="small-btn">Снять все</button>
+                    <span id="autoGroupsCounter" class="groups-counter">Выбрано: 0</span>
+                </div>
+            </div>
+            <div id="autoGroupsList"></div>
+            
+            <div class="controls">
+                <button id="startAutoSearch" class="start-btn">Начать автопоиск</button>
+                <button id="stopAutoSearch" class="stop-btn" disabled>Остановить</button>
+                <span id="autoSearchStatus" class="status">Остановлен</span>
+            </div>
+        </div>
+        
+        <div class="autosearch-results">
+            <h2>Результаты автопоиска</h2>
+            <div id="autoResults"></div>
+        </div>
+    </div>
+    
+    <script src="autosearch.js"></script>
+</body>
+</html>
