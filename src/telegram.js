@@ -1,21 +1,36 @@
 require('dotenv').config();
+const TelegramBot = require('node-telegram-bot-api');
 
 class TelegramClient {
     constructor() {
-        this.apiId = process.env.API_ID;
-        this.apiHash = process.env.API_HASH;
-        this.phoneNumber = process.env.PHONE_NUMBER;
-        this.client = null;
+        this.token = process.env.BOT_TOKEN;
+        this.bot = null;
+        this.chats = [];
     }
 
     async connect() {
-        console.log('Подключение к Telegram...');
-        // Здесь будет логика подключения
+        try {
+            this.bot = new TelegramBot(this.token, { polling: false });
+            console.log('Бот подключен');
+            return true;
+        } catch (error) {
+            console.error('Ошибка подключения:', error);
+            return false;
+        }
+    }
+
+    async getMyChats() {
+        // Bot API не может получить список чатов
+        // Вернём заглушку, чаты нужно будет добавить вручную
+        return [
+            { id: -1001234567890, name: 'Тестовая группа 1' },
+            { id: -1009876543210, name: 'Тестовая группа 2' }
+        ];
     }
 
     async searchMessages(keyword, groups, limit) {
         console.log(`Поиск "${keyword}" в ${groups.length} группах`);
-        // Здесь будет логика поиска
+        // Заглушка для поиска
         return [];
     }
 }

@@ -14,7 +14,7 @@
   "dependencies": {
     "dotenv": "^17.1.0",
     "express": "^5.1.0",
-    "telegram": "^2.26.22"
+    "node-telegram-bot-api": "^0.66.0"
   },
   "devDependencies": {
     "install": "^0.13.0",

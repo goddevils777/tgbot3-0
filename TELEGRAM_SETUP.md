@@ -1,19 +1,20 @@
-# Настройка Telegram API
+# Настройка Telegram Bot
 
-## Как получить API_ID и API_HASH:
+## Как создать бота и получить токен:
 
-1. Перейди на https://my.telegram.org
-2. Войди со своим номером телефона
-3. Выбери "API development tools"
-4. Создай новое приложение:
-   - App title: Telegram Search Bot
-   - Short name: tgsearchbot
-   - Platform: Other
-5. Скопируй App api_id и App api_hash
+1. Открой Telegram
+2. Найди бота @BotFather
+3. Отправь команду /newbot
+4. Придумай имя бота (например: Message Search Bot)
+5. Придумай username бота (например: my_search_bot)
+6. Скопируй токен вида: 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+
+## Настройка бота:
+
+1. Добавь бота в нужные группы
+2. Сделай бота администратором группы
+3. Дай боту права на чтение сообщений
 
 ## Настройка .env файла:
 
-Замени значения в файле .env на свои:
-- API_ID=12345678
-- API_HASH=abcdef1234567890abcdef1234567890
-- PHONE_NUMBER=+79991234567
+BOT_TOKEN=сюда_вставь_токен_от_BotFather

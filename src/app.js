@@ -38,7 +38,9 @@ searchBtn.addEventListener('click', async () => {
         alert('Выберите хотя бы одну группу');
         return;
     }
-    
+
+    saveSettings();
+
     results.innerHTML = `
         <div class="loading-container">
             <div class="loader"></div>
@@ -161,6 +163,7 @@ function updateGroupsCounter() {
     const checkedCount = document.querySelectorAll('.group-item input[type="checkbox"]:checked').length;
     document.getElementById('groupsCounter').textContent = `Выбрано: ${checkedCount}`;
 }
+
 
 // Добавляем слушатель на изменение чекбоксов
 document.addEventListener('change', (e) => {
