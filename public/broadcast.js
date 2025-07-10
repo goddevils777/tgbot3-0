@@ -3,6 +3,7 @@ let broadcastTasks = [];
 
 // Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadSessionInfo();
     // Инициализация DOM элементов
     const broadcastMessage = document.getElementById('broadcastMessage');
     const broadcastGroupsList = document.getElementById('broadcastGroupsList');
@@ -28,12 +29,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Загружаем сохраненные настройки
     loadBroadcastSettings();
+    
 
     // Загружаем сохраненные задания
     loadBroadcastTasks();
 
     // Настраиваем автосохранение
     setupAutoSave();
+
+    // Настраиваем логику рандомной рассылки
+    const randomCheckbox = document.getElementById('randomBroadcast');
+    const frequencySelect = document.getElementById('frequency');
+    const scheduleInputs = document.querySelector('.schedule-inputs');
+
+    randomCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            // Отключаем только периодичность
+            frequencySelect.value = 'once';
+            frequencySelect.disabled = true;
+            frequencySelect.style.background = '#f5f5f5';
+            frequencySelect.style.color = '#999';
+        } else {
+            // Включаем периодичность
+            frequencySelect.disabled = false;
+            frequencySelect.style.background = '';
+            frequencySelect.style.color = '';
+        }
+    });
+
+    // Проверяем количество выбранных групп
+    document.addEventListener('change', (e) => {
+        if (e.target.type === 'checkbox' && e.target.closest('#broadcastGroupsList')) {
+            const selectedCount = document.querySelectorAll('#broadcastGroupsList input[type="checkbox"]:checked').length;
+            
+            // Показываем рандомную опцию только при выборе 2+ групп
+            const randomOption = document.querySelector('.random-option');
+            if (selectedCount >= 2) {
+                randomOption.style.display = 'block';
+            } else {
+                randomOption.style.display = 'none';
+                randomCheckbox.checked = false;
+                frequencySelect.disabled = false;
+                scheduleInputs.classList.remove('disabled');
+            }
+            
+            updateBroadcastGroupsCounter();
+            saveBroadcastSettings();
+        }
+    });
 
     // Обработчики событий
     createBtn.addEventListener('click', createBroadcastTask);
@@ -60,6 +103,12 @@ async function loadBroadcastGroups() {
                     </label>
                 </div>
             `).join('');
+            
+            // Скрываем рандомную опцию по умолчанию
+            const randomOption = document.querySelector('.random-option');
+            if (randomOption) {
+                randomOption.style.display = 'none';
+            }
         }
     } catch (error) {
         console.error('Ошибка загрузки групп:', error);
@@ -93,6 +142,7 @@ async function createBroadcastTask() {
     const startDate = document.getElementById('startDate').value;
     const startTime = document.getElementById('startTime').value;
     const frequency = document.getElementById('frequency').value;
+    const isRandomBroadcast = document.getElementById('randomBroadcast').checked;
     
     // Валидация
     if (!message) {
@@ -136,7 +186,8 @@ async function createBroadcastTask() {
                 message: message,
                 groups: groups,
                 startDateTime: scheduledTime.toISOString(),
-                frequency: frequency
+                frequency: isRandomBroadcast ? 'random24h' : frequency,
+                isRandomBroadcast: isRandomBroadcast
             })
         });
         
@@ -215,7 +266,8 @@ function getFrequencyText(frequency) {
         'hourly': 'Каждый час',
         '2hourly': 'Каждые 2 часа',
         '4hourly': 'Каждые 4 часа',
-        'daily': 'Каждый день'
+        'daily': 'Каждый день',
+        'random24h': 'Рандомно в течение 24 часов'
     };
     return frequencyTexts[frequency] || frequency;
 }
@@ -271,6 +323,13 @@ function loadBroadcastSettings() {
             }
         });
         updateBroadcastGroupsCounter();
+        
+        // Проверяем количество выбранных групп и показываем рандомную опцию
+        const selectedCount = groupIds.length;
+        const randomOption = document.querySelector('.random-option');
+        if (randomOption && selectedCount >= 2) {
+            randomOption.style.display = 'block';
+        }
     }
 }
 
@@ -286,4 +345,31 @@ function setupAutoSave() {
             saveBroadcastSettings();
         }
     });
+}
+
+// Функция загрузки информации о сессии
+async function loadSessionInfo() {
+    try {
+        const response = await fetch('/api/session-info');
+        const data = await response.json();
+        
+        const sessionInfoDiv = document.getElementById('sessionInfo');
+        
+        if (data.success && data.session) {
+            sessionInfoDiv.innerHTML = `
+                <span>Сессия: ${data.session.name}</span>
+                <span>•</span>
+                <span>${data.session.phone}</span>
+            `;
+            sessionInfoDiv.className = 'session-info';
+        } else {
+            sessionInfoDiv.innerHTML = '<span>Нет активной сессии</span>';
+            sessionInfoDiv.className = 'session-info no-session';
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки информации о сессии:', error);
+        const sessionInfoDiv = document.getElementById('sessionInfo');
+        sessionInfoDiv.innerHTML = '<span>Ошибка загрузки</span>';
+        sessionInfoDiv.className = 'session-info no-session';
+    }
 }

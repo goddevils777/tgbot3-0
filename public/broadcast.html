@@ -10,7 +10,12 @@
     <div class="container">
         <div class="header">
             <h1>Планировщик рассылок</h1>
-            <a href="/" class="back-link">← Главная</a>
+            <div class="header-info">
+                <div id="sessionInfo" class="session-info">
+                    <span class="session-loading">Загрузка...</span>
+                </div>
+                <a href="/" class="back-link">← Главная</a>
+            </div>
         </div>
         
         <div class="broadcast-setup">
@@ -33,29 +38,38 @@
                 <div id="broadcastGroupsList"></div>
             </div>
             
-            <div class="schedule-section">
-                <h3>Настройки расписания</h3>
-                <div class="schedule-inputs">
-                    <div class="input-group">
-                        <label for="startDate">Дата начала:</label>
-                        <input type="date" id="startDate">
-                    </div>
-                    <div class="input-group">
-                        <label for="startTime">Время начала:</label>
-                        <input type="time" id="startTime">
-                    </div>
-                    <div class="input-group">
-                        <label for="frequency">Периодичность:</label>
-                        <select id="frequency">
-                            <option value="once">Один раз</option>
-                            <option value="hourly">Каждый час</option>
-                            <option value="2hourly">Каждые 2 часа</option>
-                            <option value="4hourly">Каждые 4 часа</option>
-                            <option value="daily">Каждый день</option>
-                        </select>
-                    </div>
+        <div class="schedule-section">
+            <h3>Настройки расписания</h3>
+            
+            <div class="random-option">
+                <label>
+                    <input type="checkbox" id="randomBroadcast">
+                    Рандомная рассылка в течение 24 часов (для множественных групп)
+                </label>
+                <p class="random-description">При включении сообщения будут отправляться в случайном порядке в течение суток</p>
+            </div>
+            
+            <div class="schedule-inputs">
+                <div class="input-group">
+                    <label for="startDate">Дата начала:</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="input-group">
+                    <label for="startTime">Время начала:</label>
+                    <input type="time" id="startTime">
+                </div>
+                <div class="input-group">
+                    <label for="frequency">Периодичность:</label>
+                    <select id="frequency">
+                        <option value="once">Один раз</option>
+                        <option value="hourly">Каждый час</option>
+                        <option value="2hourly">Каждые 2 часа</option>
+                        <option value="4hourly">Каждые 4 часа</option>
+                        <option value="daily">Каждый день</option>
+                    </select>
                 </div>
             </div>
+        </div>
             
             <div class="controls">
                 <button id="createBroadcast" class="start-btn">Создать задание</button>

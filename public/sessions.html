@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление сессиями - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Управление Telegram сессиями</h1>
+            <a href="/" class="back-link">← Главная</a>
+        </div>
+        
+        <div class="sessions-section">
+            <h2>Текущая сессия</h2>
+            <div id="currentSession" class="current-session">
+                <div class="session-loading">Загрузка информации о сессии...</div>
+            </div>
+        </div>
+        
+        <div class="add-session-section">
+            <h2>Добавить новую сессию</h2>
+            <div class="add-session-form">
+                <div class="input-group">
+                    <label for="sessionName">Название сессии:</label>
+                    <input type="text" id="sessionName" placeholder="Например: Основной аккаунт">
+                </div>
+                <div class="input-group">
+                    <label for="phoneNumber">Номер телефона:</label>
+                    <input type="tel" id="phoneNumber" placeholder="+7900123456">
+                </div>
+                <button id="addSessionBtn" class="start-btn">Добавить сессию</button>
+            </div>
+        </div>
+        
+        <div class="sessions-list-section">
+            <h2>Все сессии</h2>
+            <div id="sessionsList" class="sessions-list">
+                <div class="sessions-loading">Загрузка списка сессий...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="sessions.js"></script>
+</body>
+</html>

@@ -257,8 +257,36 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
 });
 
 
+// Функция загрузки информации о сессии
+async function loadSessionInfo() {
+    try {
+        const response = await fetch('/api/session-info');
+        const data = await response.json();
+        
+        const sessionInfoDiv = document.getElementById('sessionInfo');
+        
+        if (data.success && data.session) {
+            sessionInfoDiv.innerHTML = `
+                <span>Сессия: ${data.session.name}</span>
+                <span>•</span>
+                <span>${data.session.phone}</span>
+            `;
+            sessionInfoDiv.className = 'session-info';
+        } else {
+            sessionInfoDiv.innerHTML = '<span>Нет активной сессии</span>';
+            sessionInfoDiv.className = 'session-info no-session';
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки информации о сессии:', error);
+        const sessionInfoDiv = document.getElementById('sessionInfo');
+        sessionInfoDiv.innerHTML = '<span>Ошибка загрузки</span>';
+        sessionInfoDiv.className = 'session-info no-session';
+    }
+}
+
 // Вызываем при загрузке страницы
 (async () => {
+    await loadSessionInfo();
     await displayGroups();
     loadLastResults();
 })();

@@ -3,6 +3,7 @@ const TelegramClient = require('./src/telegram.js');
 const TelegramClientAPI = require('./src/telegramClient');
 const AIAnalyzer = require('./src/aiAnalyzer');
 const BroadcastManager = require('./src/broadcastManager');
+const SessionManager = require('./src/sessionManager');
 
 const app = express();
 const PORT = 3000;
@@ -12,12 +13,50 @@ app.use(express.static('public'));
 app.use('/src', express.static('src'));
 
 const telegram = new TelegramClient();
-const telegramClientAPI = new TelegramClientAPI();
+const sessionManager = new SessionManager();
 const aiAnalyzer = new AIAnalyzer();
+
+// Создаем TelegramClientAPI с поддержкой SessionManager
+let telegramClientAPI = null;
+
+// Инициализируем с текущей сессией или создаем пустой
+async function initializeTelegramClient() {
+    const activeClient = sessionManager.getActiveClient();
+    if (activeClient) {
+        // Создаем объект с методами из TelegramClientAPI
+        const TelegramClientAPI = require('./src/telegramClient');
+        const tempInstance = new TelegramClientAPI();
+        
+        telegramClientAPI = {
+            client: activeClient,
+            isConnected: true,
+            // Привязываем методы к нашему объекту
+            searchMessages: tempInstance.searchMessages.bind({ client: activeClient, isConnected: true }),
+            autoSearchMessages: tempInstance.autoSearchMessages.bind({ client: activeClient, isConnected: true }),
+            getChats: tempInstance.getChats.bind({ client: activeClient, isConnected: true }),
+            getLastMessageId: tempInstance.getLastMessageId.bind({ client: activeClient, isConnected: true })
+        };
+        
+        console.log('TelegramClientAPI инициализирован с активной сессией');
+    } else {
+        // Создаем пустую заглушку
+        telegramClientAPI = {
+            client: null,
+            isConnected: false,
+            searchMessages: async () => [],
+            autoSearchMessages: async () => [],
+            getChats: async () => [],
+            getLastMessageId: async () => 0
+        };
+        
+        console.log('Нет активной сессии, используйте страницу управления сессиями');
+    }
+}
+
 const broadcastManager = new BroadcastManager(telegramClientAPI);
 
-// Подключение к Telegram Client при старте
-telegramClientAPI.connect().then(() => {
+// Инициализируем клиент при запуске
+initializeTelegramClient().then(() => {
     console.log('Telegram Client API готов к работе');
 }).catch(error => {
     console.log('Ошибка:', error.message);
@@ -53,6 +92,27 @@ app.post('/api/search', async (req, res) => {
         // Реальный поиск сообщений
         const results = await telegramClientAPI.searchMessages(keywords, groups, limit);
         res.json({ success: true, results: results });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения краткой информации о сессии для главной страницы
+app.get('/api/session-info', async (req, res) => {
+    try {
+        const currentSession = sessionManager.getCurrentSession();
+        if (currentSession) {
+            res.json({ 
+                success: true, 
+                session: {
+                    name: currentSession.name,
+                    phone: currentSession.phone,
+                    isConnected: currentSession.isConnected
+                }
+            });
+        } else {
+            res.json({ success: false, session: null });
+        }
     } catch (error) {
         res.json({ success: false, error: error.message });
     }
@@ -161,7 +221,7 @@ app.post('/api/init-autosearch', async (req, res) => {
 // API для создания задания рассылки
 app.post('/api/create-broadcast', async (req, res) => {
     try {
-        const { message, groups, startDateTime, frequency } = req.body;
+        const { message, groups, startDateTime, frequency, isRandomBroadcast } = req.body;
         
         // Валидация
         if (!message || message.trim().length === 0) {
@@ -199,7 +259,8 @@ app.post('/api/create-broadcast', async (req, res) => {
             message: message.trim(),
             groups: groups,
             startDateTime: startDateTime,
-            frequency: frequency || 'once'
+            frequency: frequency || 'once',
+            isRandomBroadcast: isRandomBroadcast || false
         });
         
         res.json({ success: true, task: task });
@@ -234,6 +295,101 @@ app.delete('/api/broadcast-tasks/:taskId', async (req, res) => {
         }
     } catch (error) {
         console.error('Ошибка удаления задания:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+
+// API для получения текущей сессии
+app.get('/api/current-session', async (req, res) => {
+    try {
+        const currentSession = sessionManager.getCurrentSession();
+        if (currentSession) {
+            res.json({ success: true, session: currentSession });
+        } else {
+            res.json({ success: false, error: 'Нет активной сессии' });
+        }
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения списка всех сессий
+app.get('/api/sessions', async (req, res) => {
+    try {
+        const sessions = sessionManager.getAllSessions();
+        res.json({ success: true, sessions });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для добавления новой сессии
+app.post('/api/add-session', async (req, res) => {
+    try {
+        const { name, phone } = req.body;
+        
+        if (!name || !phone) {
+            return res.json({ 
+                success: false, 
+                error: 'Введите название и номер телефона' 
+            });
+        }
+        
+        console.log(`Создание новой сессии: ${name} (${phone})`);
+        const result = await sessionManager.createSession(name, phone);
+        
+        if (result.success) {
+            // Обновляем telegramClientAPI для новой сессии
+            await initializeTelegramClient();
+            res.json({ success: true, message: 'Сессия успешно создана' });
+        } else {
+            res.json({ success: false, error: result.error });
+        }
+    } catch (error) {
+        console.error('Ошибка создания сессии:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для переключения сессии
+app.post('/api/switch-session', async (req, res) => {
+    try {
+        const { sessionId } = req.body;
+        
+        console.log(`Переключение на сессию: ${sessionId}`);
+        const result = await sessionManager.switchToSession(sessionId);
+        
+        if (result.success) {
+            // Обновляем telegramClientAPI для новой сессии
+            await initializeTelegramClient();
+            res.json({ success: true, message: 'Сессия успешно переключена' });
+        } else {
+            res.json({ success: false, error: result.error });
+        }
+    } catch (error) {
+        console.error('Ошибка переключения сессии:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для удаления сессии
+app.delete('/api/sessions/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        
+        console.log(`Удаление сессии: ${sessionId}`);
+        const result = await sessionManager.deleteSession(sessionId);
+        
+        if (result.success) {
+            // Если удалили текущую сессию, нужно переинициализировать клиент
+            await initializeTelegramClient();
+            res.json({ success: true, message: 'Сессия успешно удалена' });
+        } else {
+            res.json({ success: false, error: result.error });
+        }
+    } catch (error) {
+        console.error('Ошибка удаления сессии:', error);
         res.json({ success: false, error: error.message });
     }
 });

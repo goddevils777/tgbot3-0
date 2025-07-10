@@ -678,3 +678,187 @@ input::placeholder {
     background: #d1ecf1;
     color: #0c5460;
 }
+
+.random-option {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+}
+
+.random-option label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    color: #2c3e50;
+    cursor: pointer;
+}
+
+.random-option input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+}
+
+.random-description {
+    margin: 10px 0 0 30px;
+    font-size: 14px;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+/* Стили для страницы управления сессиями */
+.sessions-section,
+.add-session-section,
+.sessions-list-section {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.current-session {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #27ae60;
+}
+
+.session-item {
+    background: #f8f9fa;
+    padding: 20px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.session-name {
+    font-weight: 500;
+    color: #2c3e50;
+    font-size: 18px;
+}
+
+.session-status {
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-active {
+    background: #d5f4e6;
+    color: #27ae60;
+}
+
+.status-inactive {
+    background: #ffeaa7;
+    color: #d63031;
+}
+
+.session-info {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+    color: #7f8c8d;
+    margin-bottom: 15px;
+}
+
+.session-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.switch-session-btn {
+    padding: 8px 16px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.switch-session-btn:hover {
+    background: #2980b9;
+}
+
+.delete-session-btn {
+    padding: 8px 16px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.delete-session-btn:hover {
+    background: #c0392b;
+}
+
+.add-session-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 400px;
+}
+
+.sessions-loading,
+.session-loading {
+    text-align: center;
+    color: #7f8c8d;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.session-info {
+    background: #e8f4f8;
+    color: #2980b9;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid #bde3f0;
+}
+
+.session-info.no-session {
+    background: #ffeaa7;
+    color: #d63031;
+    border: 1px solid #fdcb6e;
+}
+
+.session-loading {
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+.header-links {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}

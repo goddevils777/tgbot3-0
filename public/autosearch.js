@@ -3,6 +3,7 @@ let autoKeywords = [];
 let isAutoSearchRunning = false;
 let autoSearchInterval = null;
 let lastMessageIds = {}; // Объект для хранения последних ID по группам
+let isCheckingMessages = false; // Новая переменная для предотвращения перекрытия
 
 // DOM элементы (будут инициализированы после загрузки)
 let autoSearchInput, autoKeywordsList, autoGroupsList, autoGroupsCounter, statusElement, autoResults;
@@ -192,9 +193,16 @@ async function startAutoSearch() {
     statusElement.className = 'status running';
     
     console.log('Автопоиск запущен! Ожидание новых сообщений...');
+
+    // Запускаем первую проверку сразу
+    checkForNewMessages();
     
-    // Запускаем проверку каждые 10 секунд (увеличили интервал)
-    autoSearchInterval = setInterval(checkForNewMessages, 10000);
+    // Запускаем проверку каждые 10 секунд, но только после завершения предыдущей
+    autoSearchInterval = setInterval(() => {
+        if (isAutoSearchRunning) {
+            checkForNewMessages();
+        }
+    }, 10000); // 10 секунд между циклами
 }
 
 // Функция остановки автопоиска
@@ -221,16 +229,23 @@ function stopAutoSearch() {
 
 // Функция проверки новых сообщений
 async function checkForNewMessages() {
-    if (!isAutoSearchRunning) return;
+    if (!isAutoSearchRunning || isCheckingMessages) return;
     
+    isCheckingMessages = true; // Блокируем новые проверки
+    
+    console.log('Начинаем проверку новых сообщений...');
     const selectedGroups = document.querySelectorAll('#autoGroupsList input[type="checkbox"]:checked');
     
-    for (const groupCheckbox of selectedGroups) {
+    for (let i = 0; i < selectedGroups.length; i++) {
         if (!isAutoSearchRunning) break; // Проверяем, не остановлен ли поиск
+        
+        const groupCheckbox = selectedGroups[i];
         
         try {
             const groupElement = groupCheckbox.nextElementSibling;
             const groupName = groupElement.querySelector('.group-name').textContent;
+            
+            console.log(`Проверяем группу ${i + 1}/${selectedGroups.length}: ${groupName}`);
             
             const response = await fetch('/api/autosearch', {
                 method: 'POST',
@@ -259,9 +274,15 @@ async function checkForNewMessages() {
             console.error('Ошибка автопоиска:', error);
         }
         
-        // Пауза между проверками групп (2 секунды)
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Пауза 2 секунды между запросами к разным группам (кроме последней)
+        if (i < selectedGroups.length - 1 && isAutoSearchRunning) {
+            console.log('Пауза 2 секунды до следующей группы...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
     }
+    
+    console.log('Проверка всех групп завершена. Пауза 10 секунд до следующего цикла...');
+    isCheckingMessages = false; // Разблокируем проверки
 }
 
 // Функция отображения новых сообщений
@@ -317,6 +338,8 @@ function loadAutoResults() {
 
 // Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', async () => {
+    // Загружаем информацию о сессии
+    await loadSessionInfo();
     // Инициализация DOM элементов
     autoSearchInput = document.getElementById('autoSearchInput');
     autoKeywordsList = document.getElementById('autoKeywordsList');
@@ -346,3 +369,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('clearAutoSelection').addEventListener('click', clearAutoSelection);
     document.getElementById('selectAllAuto').addEventListener('click', selectAllAuto);
 });
+
+// Функция загрузки информации о сессии
+async function loadSessionInfo() {
+    try {
+        const response = await fetch('/api/session-info');
+        const data = await response.json();
+        
+        const sessionInfoDiv = document.getElementById('sessionInfo');
+        
+        if (data.success && data.session) {
+            sessionInfoDiv.innerHTML = `
+                <span>Сессия: ${data.session.name}</span>
+                <span>•</span>
+                <span>${data.session.phone}</span>
+            `;
+            sessionInfoDiv.className = 'session-info';
+        } else {
+            sessionInfoDiv.innerHTML = '<span>Нет активной сессии</span>';
+            sessionInfoDiv.className = 'session-info no-session';
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки информации о сессии:', error);
+        const sessionInfoDiv = document.getElementById('sessionInfo');
+        sessionInfoDiv.innerHTML = '<span>Ошибка загрузки</span>';
+        sessionInfoDiv.className = 'session-info no-session';
+    }
+}
