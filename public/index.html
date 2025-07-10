@@ -15,6 +15,7 @@
                     <span class="session-loading">Загрузка...</span>
                 </div>
                 <div class="header-links">
+                    <a href="/livestream.html" class="back-link">Live Stream →</a>
                     <a href="/autosearch.html" class="back-link">Автопоиск →</a>
                     <a href="/broadcast.html" class="back-link">Рассылка →</a>
                     <a href="/sessions.html" class="back-link">Сессии →</a>
@@ -52,7 +53,10 @@
         </div>
         
         <div class="results-section">
-            <h2>Результаты</h2>
+            <div class="results-header">
+                <h2>Результаты</h2>
+                <button id="clearResultsBtn" class="small-btn" style="display: none;">Очистить результаты</button>
+            </div>
             <div id="results"></div>
         </div>
     </div>

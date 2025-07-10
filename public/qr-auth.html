@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Авторизация - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>QR Авторизация Telegram</h1>
+            <div class="header-info">
+                <a href="/sessions.html" class="back-link">← Управление сессиями</a>
+            </div>
+        </div>
+        
+        <div class="qr-auth-section">
+            <h2>Создание новой сессии через QR-код</h2>
+            
+            <div class="session-name-input">
+                <label for="qrSessionName">Название сессии:</label>
+                <input type="text" id="qrSessionName" placeholder="Например: Основной аккаунт" maxlength="50">
+            </div>
+            
+            <div class="qr-container" id="qrContainer">
+                <div class="qr-placeholder">
+                    <h3>Нажмите кнопку для генерации QR-кода</h3>
+                    <p>После генерации отсканируйте QR-код в мобильном приложении Telegram:</p>
+                    <ol>
+                        <li>Откройте Telegram на телефоне</li>
+                        <li>Перейдите в Настройки → Устройства</li>
+                        <li>Нажмите "Подключить устройство"</li>
+                        <li>Отсканируйте QR-код ниже</li>
+                    </ol>
+                </div>
+                <div id="qrCode" style="display: none;"></div>
+            </div>
+            
+            <div class="qr-controls">
+                <button id="generateQR" class="start-btn">Сгенерировать QR-код</button>
+                <button id="cancelQR" class="stop-btn" style="display: none;">Отменить</button>
+            </div>
+            
+            <div class="qr-status" id="qrStatus">
+                <span class="status stopped">Готов к генерации</span>
+            </div>
+        </div>
+        
+        <div class="qr-info">
+            <h3>Информация о QR авторизации</h3>
+            <div class="info-item">
+                <strong>Безопасность:</strong> QR-код действует только 2 минуты и одноразовый
+            </div>
+            <div class="info-item">
+                <strong>Приватность:</strong> Данные остаются только на вашем сервере
+            </div>
+            <div class="info-item">
+                <strong>Совместимость:</strong> Работает с любым Telegram аккаунтом
+            </div>
+        </div>
+    </div>
+    
+    <script src="qr-auth.js"></script>
+</body>
+</html>

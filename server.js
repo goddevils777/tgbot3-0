@@ -8,6 +8,7 @@ const SessionManager = require('./src/sessionManager');
 const app = express();
 const PORT = 3000;
 
+
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/src', express.static('src'));
@@ -22,6 +23,8 @@ let telegramClientAPI = null;
 // Инициализируем с текущей сессией или создаем пустой
 async function initializeTelegramClient() {
     const activeClient = sessionManager.getActiveClient();
+    console.log('Активный клиент после автоподключения:', activeClient ? 'найден' : 'не найден');
+    
     if (activeClient) {
         // Создаем объект с методами из TelegramClientAPI
         const TelegramClientAPI = require('./src/telegramClient');
@@ -34,10 +37,13 @@ async function initializeTelegramClient() {
             searchMessages: tempInstance.searchMessages.bind({ client: activeClient, isConnected: true }),
             autoSearchMessages: tempInstance.autoSearchMessages.bind({ client: activeClient, isConnected: true }),
             getChats: tempInstance.getChats.bind({ client: activeClient, isConnected: true }),
+            getChannels: tempInstance.getChannels.bind({ client: activeClient, isConnected: true }),
+            checkLiveStream: tempInstance.checkLiveStream.bind({ client: activeClient, isConnected: true }),
             getLastMessageId: tempInstance.getLastMessageId.bind({ client: activeClient, isConnected: true })
         };
         
         console.log('TelegramClientAPI инициализирован с активной сессией');
+        console.log('Клиент подключен:', telegramClientAPI.isConnected);
     } else {
         // Создаем пустую заглушку
         telegramClientAPI = {
@@ -46,6 +52,8 @@ async function initializeTelegramClient() {
             searchMessages: async () => [],
             autoSearchMessages: async () => [],
             getChats: async () => [],
+            getChannels: async () => [],
+            checkLiveStream: async () => ({ isLive: false, streamInfo: null, participants: [] }),
             getLastMessageId: async () => 0
         };
         
@@ -56,11 +64,13 @@ async function initializeTelegramClient() {
 const broadcastManager = new BroadcastManager(telegramClientAPI);
 
 // Инициализируем клиент при запуске
-initializeTelegramClient().then(() => {
+sessionManager.loadSavedSessions(); // Сначала загружаем сессии и автоподключаемся
+
+// Инициализируем телеграм клиент ПОСЛЕ автоподключения
+setTimeout(async () => {
+    await initializeTelegramClient();
     console.log('Telegram Client API готов к работе');
-}).catch(error => {
-    console.log('Ошибка:', error.message);
-});
+}, 2000); // Даем 2 секунды на автоподключение
 
 // API для поиска сообщений
 app.post('/api/search', async (req, res) => {
@@ -124,6 +134,43 @@ app.get('/api/groups', async (req, res) => {
         const groups = await telegramClientAPI.getChats();
         res.json({ success: true, groups: groups });
     } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения каналов (для Live Stream)
+app.get('/api/channels', async (req, res) => {
+    try {
+        const channels = await telegramClientAPI.getChannels();
+        res.json({ success: true, channels: channels });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для проверки статуса стрима и получения участников
+app.post('/api/check-stream', async (req, res) => {
+    try {
+        const { channelId, channelName } = req.body;
+        
+        if (!channelId) {
+            return res.json({ 
+                success: false, 
+                error: 'Не указан ID канала' 
+            });
+        }
+        
+        // Проверяем статус стрима и получаем участников
+        const streamData = await telegramClientAPI.checkLiveStream(channelId, channelName);
+        
+        res.json({ 
+            success: true, 
+            isLive: streamData.isLive,
+            streamInfo: streamData.streamInfo,
+            participants: streamData.participants || []
+        });
+    } catch (error) {
+        console.error('Ошибка проверки стрима:', error);
         res.json({ success: false, error: error.message });
     }
 });
@@ -390,6 +437,76 @@ app.delete('/api/sessions/:sessionId', async (req, res) => {
         }
     } catch (error) {
         console.error('Ошибка удаления сессии:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для генерации QR-кода
+app.post('/api/generate-qr', async (req, res) => {
+    try {
+        const { sessionName } = req.body;
+        
+        if (!sessionName || sessionName.trim().length < 3) {
+            return res.json({ 
+                success: false, 
+                error: 'Название сессии должно быть не менее 3 символов' 
+            });
+        }
+        
+        const result = await sessionManager.generateQRCode(sessionName.trim());
+        
+        if (result.success) {
+            res.json({ 
+                success: true, 
+                token: result.token,
+                qrCodeUrl: result.qrCodeUrl
+            });
+        } else {
+            res.json({ success: false, error: result.error });
+        }
+    } catch (error) {
+        console.error('Ошибка генерации QR-кода:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для проверки статуса QR авторизации
+app.post('/api/check-qr-status', async (req, res) => {
+    try {
+        const { token } = req.body;
+        
+        if (!token) {
+            return res.json({ 
+                success: false, 
+                error: 'Не указан токен' 
+            });
+        }
+        
+        const result = await sessionManager.checkQRStatus(token);
+        
+        res.json({ 
+            success: true, 
+            status: result.status,
+            sessionId: result.sessionId || null
+        });
+    } catch (error) {
+        console.error('Ошибка проверки статуса QR:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для отмены QR авторизации
+app.post('/api/cancel-qr', async (req, res) => {
+    try {
+        const { token } = req.body;
+        
+        if (token) {
+            await sessionManager.cancelQRCode(token);
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Ошибка отмены QR-кода:', error);
         res.json({ success: false, error: error.message });
     }
 });

@@ -93,6 +93,54 @@ class TelegramClientAPI {
         }
     }
 
+    async getChannels() {
+        if (!this.isConnected) {
+            return [];
+        }
+
+        try {
+            const dialogs = await this.client.getDialogs();
+            const channels = [];
+            
+            for (const dialog of dialogs) {
+                // Ищем только каналы (не группы)
+                if (dialog.isChannel && dialog.entity && !dialog.entity.left && !dialog.entity.kicked) {
+                    // Проверяем что это именно канал, а не супергруппа
+                    if (dialog.entity.broadcast) {
+                        let subscribersCount = 0;
+                        try {
+                            if (dialog.entity.participantsCount) {
+                                subscribersCount = dialog.entity.participantsCount;
+                            } else if (dialog.entity.membersCount) {
+                                subscribersCount = dialog.entity.membersCount;
+                            }
+                        } catch (e) {
+                            try {
+                                const fullChannel = await this.client.getEntity(dialog.id);
+                                subscribersCount = fullChannel.participantsCount || fullChannel.membersCount || 0;
+                            } catch (err) {
+                                subscribersCount = 0;
+                            }
+                        }
+
+                        channels.push({
+                            id: dialog.id,
+                            name: dialog.title || dialog.name,
+                            type: 'channel',
+                            subscribersCount: subscribersCount
+                        });
+                    }
+                }
+            }
+            
+            console.log(`Найдено каналов: ${channels.length}`);
+            return channels;
+        } catch (error) {
+            console.error('Ошибка получения каналов:', error);
+            return [];
+        }
+    }
+
     async searchMessages(keywords, groups, limit) {
         
         if (!this.isConnected) {
@@ -200,78 +248,262 @@ class TelegramClientAPI {
     }
 
 
-        async autoSearchMessages(keywords, groupId, groupName, lastMessageId) {
-            if (!this.isConnected) {
-                console.log('Клиент не подключен');
-                return [];
+    async autoSearchMessages(keywords, groupId, groupName, lastMessageId) {
+        if (!this.isConnected) {
+            console.log('Клиент не подключен');
+            return [];
+        }
+
+        try {
+            const groupIdNum = parseInt(groupId);
+            
+            // Получаем только последние 30 сообщений
+            const messages = await this.client.getMessages(groupIdNum, {
+                limit: 30
+            });
+            
+            const results = [];
+            
+            for (const message of messages) {
+                // ВАЖНО: берем только сообщения новее lastMessageId
+                if (message.id <= lastMessageId) continue;
+                
+                // Пропускаем служебные сообщения
+                if (message.className === 'MessageService') continue;
+                
+                // Получаем текст сообщения
+                let messageText = '';
+                if (message.message) {
+                    messageText = message.message;
+                } else if (message.text) {
+                    messageText = message.text;
+                } else if (message.caption) {
+                    messageText = message.caption;
+                }
+
+                if (!messageText) continue;
+
+                // Проверяем наличие ключевых слов
+                const lowerMessageText = messageText.toLowerCase();
+                const containsKeyword = keywords.some(keyword => 
+                    lowerMessageText.includes(keyword.toLowerCase())
+                );
+                
+                if (containsKeyword) {
+                    console.log(`Найдено новое сообщение ID: ${message.id} в группе ${groupName}`);
+                    const messageDate = new Date(message.date * 1000);
+                    results.push({
+                        id: message.id,
+                        groupName: groupName,
+                        text: messageText,
+                        date: messageDate.toLocaleString('ru-RU'),
+                        timestamp: messageDate.getTime(),
+                        sender: message.sender ? (
+                            message.sender.username ? `@${message.sender.username}` :
+                            message.sender.phone ? `+${message.sender.phone}` :
+                            message.sender.firstName ? message.sender.firstName :
+                            'Аноним'
+                        ) : 'Аноним',
+                        link: (() => {
+                            const groupIdStr = String(Math.abs(groupIdNum));
+                            const chatId = groupIdStr.startsWith('100') ? groupIdStr.substring(3) : groupIdStr;
+                            return `https://t.me/c/${chatId}/${message.id}`;
+                        })()
+                    });
+                }
             }
+            
+            return results;
+        } catch (error) {
+            console.error('Ошибка автопоиска:', error);
+            return [];
+        }
+    }
 
-            try {
-                const groupIdNum = parseInt(groupId);
-                
-                // Получаем только последние 30 сообщений
-                const messages = await this.client.getMessages(groupIdNum, {
-                    limit: 30
-                });
-                
-                const results = [];
-                
-                for (const message of messages) {
-                    // ВАЖНО: берем только сообщения новее lastMessageId
-                    if (message.id <= lastMessageId) continue;
-                    
-                    // Пропускаем служебные сообщения
-                    if (message.className === 'MessageService') continue;
-                    
-                    // Получаем текст сообщения
-                    let messageText = '';
-                    if (message.message) {
-                        messageText = message.message;
-                    } else if (message.text) {
-                        messageText = message.text;
-                    } else if (message.caption) {
-                        messageText = message.caption;
-                    }
+    async checkLiveStream(channelId, channelName) {
+        if (!this.isConnected) {
+            return { isLive: false, streamInfo: null, participants: [] };
+        }
 
-                    if (!messageText) continue;
-
-                    // Проверяем наличие ключевых слов
-                    const lowerMessageText = messageText.toLowerCase();
-                    const containsKeyword = keywords.some(keyword => 
-                        lowerMessageText.includes(keyword.toLowerCase())
-                    );
+        try {
+            const channelIdNum = parseInt(channelId);
+            console.log(`Проверяем стрим в канале: ${channelName} (ID: ${channelIdNum})`);
+            
+            // Получаем последние сообщения канала
+            const messages = await this.client.getMessages(channelIdNum, {
+                limit: 20
+            });
+            
+            console.log(`Получено сообщений: ${messages.length}`);
+            
+            let isLive = false;
+            let streamInfo = null;
+            
+            // Ищем признаки активного стрима
+            for (const message of messages) {
+                console.log(`Сообщение ${message.id}: тип = ${message.className}`);
+                
+                // Проверяем на групповой видеозвонок/стрим
+                if (message.action) {
+                    console.log(`Action: ${message.action.className}`);
                     
-                    if (containsKeyword) {
-                        console.log(`Найдено новое сообщение ID: ${message.id} в группе ${groupName}`);
-                        const messageDate = new Date(message.date * 1000);
-                        results.push({
-                            id: message.id,
-                            groupName: groupName,
-                            text: messageText,
-                            date: messageDate.toLocaleString('ru-RU'),
-                            timestamp: messageDate.getTime(),
-                            sender: message.sender ? (
-                                message.sender.username ? `@${message.sender.username}` :
-                                message.sender.phone ? `+${message.sender.phone}` :
-                                message.sender.firstName ? message.sender.firstName :
-                                'Аноним'
-                            ) : 'Аноним',
-                            link: (() => {
-                                const groupIdStr = String(Math.abs(groupIdNum));
-                                const chatId = groupIdStr.startsWith('100') ? groupIdStr.substring(3) : groupIdStr;
-                                return `https://t.me/c/${chatId}/${message.id}`;
-                            })()
-                        });
+                    // Проверяем на GroupCallStarted или подобные действия
+                    if (message.action.className === 'MessageActionGroupCall' || 
+                        message.action.className === 'MessageActionGroupCallScheduled') {
+                        
+                        isLive = true;
+                        streamInfo = {
+                            channelName: channelName,
+                            messageId: message.id,
+                            startTime: new Date(message.date * 1000).toISOString()
+                        };
+                        console.log('Найден активный групповой звонок/стрим!');
+                        break;
                     }
                 }
                 
-                return results;
-            } catch (error) {
-                console.error('Ошибка автопоиска:', error);
-                return [];
+                // Проверяем медиа сообщения
+                if (message.media) {
+                    console.log(`Медиа: ${message.media.className}`);
+                    
+                    // Проверяем на live broadcast
+                    if (message.media.className === 'MessageMediaWebPage' && 
+                        message.media.webpage && 
+                        message.media.webpage.type === 'video') {
+                        
+                        isLive = true;
+                        streamInfo = {
+                            channelName: channelName,
+                            messageId: message.id,
+                            startTime: new Date(message.date * 1000).toISOString()
+                        };
+                        console.log('Найден видео стрим!');
+                        break;
+                    }
+                }
             }
+            
+            let participants = [];
+            
+            if (isLive) {
+                console.log('Стрим активен, пытаемся получить участников...');
+                try {
+                    console.log('Пытаемся получить участников через разные методы...');
+                    
+                    // Метод 1: Попробуем получить участников канала
+                    const result = await this.client.invoke(
+                        new Api.channels.GetParticipants({
+                            channel: channelIdNum,
+                            filter: new Api.ChannelParticipantsRecent(),
+                            offset: 0,
+                            limit: 200,
+                            hash: 0
+                        })
+                    );
+                    
+                    if (result.users && result.users.length > 0) {
+                        console.log(`Найдено участников: ${result.users.length}`);
+                        participants = result.users.map(user => ({
+                            id: user.id,
+                            name: user.firstName ? 
+                                (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName) 
+                                : null,
+                            username: user.username || null,
+                            phone: user.phone || null
+                        }));
+                    }
+                } catch (participantsError) {
+                    console.log('Ошибка получения участников:', participantsError.message);
+                    participants = [];
+                }
+            } else {
+                console.log('Активный стрим не обнаружен');
+            }
+            
+            return {
+                isLive: isLive,
+                streamInfo: streamInfo,
+                participants: participants
+            };
+            
+        } catch (error) {
+            console.error('Ошибка проверки live stream:', error);
+            return { isLive: false, streamInfo: null, participants: [] };
         }
+    }
 
+    async getStreamParticipants(channelId) {
+        try {
+            console.log('Пытаемся получить участников через разные методы...');
+            
+            // Метод 1: Попробуем получить участников канала
+            try {
+                const result = await this.client.invoke(
+                    new Api.channels.GetParticipants({
+                        channel: channelId,
+                        filter: new Api.ChannelParticipantsRecent(),
+                        offset: 0,
+                        limit: 200,
+                        hash: 0
+                    })
+                );
+                
+                if (result.users && result.users.length > 0) {
+                    console.log(`Найдено участников канала: ${result.users.length}`);
+                    return result.users.map(user => ({
+                        id: user.id,
+                        name: user.firstName ? 
+                            (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName) 
+                            : null,
+                        username: user.username || null,
+                        phone: user.phone || null
+                    }));
+                }
+            } catch (e) {
+                console.log('Метод 1 не удался:', e.message);
+            }
+            
+            // Метод 2: Попробуем получить участников группового звонка
+            try {
+                const callResult = await this.client.invoke(
+                    new Api.phone.GetGroupCall({
+                        call: channelId,
+                        limit: 100
+                    })
+                );
+                
+                if (callResult.users && callResult.users.length > 0) {
+                    console.log(`Найдено участников звонка: ${callResult.users.length}`);
+                    return callResult.users.map(user => ({
+                        id: user.id,
+                        name: user.firstName ? 
+                            (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName) 
+                            : null,
+                        username: user.username || null,
+                        phone: user.phone || null
+                    }));
+                }
+            } catch (e) {
+                console.log('Метод 2 не удался:', e.message);
+            }
+            
+            // Метод 3: Попробуем получить активных пользователей
+            try {
+                const entity = await this.client.getEntity(channelId);
+                console.log('Информация о канале получена');
+                return [];
+            } catch (e) {
+                console.log('Метод 3 не удался:', e.message);
+            }
+            
+            console.log('Все методы получения участников не удались');
+            return [];
+            
+        } catch (error) {
+            console.error('Общая ошибка получения участников:', error);
+            return [];
+        }
+    }
 }
 
 

@@ -313,6 +313,11 @@ function displayNewMessages(messages) {
         // Сохраняем результаты
         saveAutoResults();
     });
+    
+    // Показываем кнопку очистки если есть результаты
+    if (autoResults.children.length > 0) {
+        showClearAutoButton();
+    }
 }
 
 // Сохранение результатов автопоиска
@@ -330,6 +335,11 @@ function loadAutoResults() {
         try {
             const results = JSON.parse(savedResults);
             autoResults.innerHTML = results.map(result => result.html).join('');
+            
+            // Показываем кнопку очистки если есть результаты
+            if (results.length > 0) {
+                showClearAutoButton();
+            }
         } catch (error) {
             console.error('Ошибка загрузки результатов:', error);
         }
@@ -369,6 +379,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('clearAutoSelection').addEventListener('click', clearAutoSelection);
     document.getElementById('selectAllAuto').addEventListener('click', selectAllAuto);
 });
+
+// Функция очистки результатов автопоиска
+function clearAutoResults() {
+    if (confirm('Вы уверены, что хотите очистить все результаты автопоиска?')) {
+        // Очищаем результаты на странице
+        autoResults.innerHTML = '';
+        
+        // Скрываем кнопку очистки
+        document.getElementById('clearAutoResultsBtn').style.display = 'none';
+        
+        // Очищаем сохраненные результаты
+        localStorage.removeItem('autoSearchResults');
+        
+        console.log('Результаты автопоиска очищены');
+    }
+}
+
+// Функция показа кнопки очистки автопоиска
+function showClearAutoButton() {
+    document.getElementById('clearAutoResultsBtn').style.display = 'block';
+}
+
+// Обработчик кнопки очистки
+document.getElementById('clearAutoResultsBtn').addEventListener('click', clearAutoResults);
 
 // Функция загрузки информации о сессии
 async function loadSessionInfo() {

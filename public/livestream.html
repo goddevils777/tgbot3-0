@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream Parser - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Парсер участников Live Stream</h1>
+            <div class="header-info">
+                <div id="sessionInfo" class="session-info">
+                    <span class="session-loading">Загрузка...</span>
+                </div>
+                <a href="/" class="back-link">← Главная</a>
+            </div>
+        </div>
+        
+        <div class="livestream-setup">
+            <h2>Выбор канала для мониторинга</h2>
+            
+            <div class="channel-selection">
+                <div class="channels-header">
+                    <h3>Выберите канал со стримом</h3>
+                    <span id="channelsCounter" class="groups-counter">Загрузка каналов...</span>
+                </div>
+                <div id="channelsList"></div>
+            </div>
+            
+            <div class="controls">
+                <button id="startStreamParsing" class="start-btn">Начать поиск участников</button>
+                <button id="stopStreamParsing" class="stop-btn" disabled>Остановить поиск</button>
+                <span id="streamStatus" class="status stopped">Остановлен</span>
+            </div>
+            
+            <div class="stream-info" id="streamInfo" style="display: none;">
+                <h3>Информация о стриме</h3>
+                <div id="streamDetails"></div>
+            </div>
+        </div>
+        
+        <div class="participants-results">
+            <h2>Участники стрима</h2>
+            <div class="participants-stats">
+                <span id="totalParticipants">Всего найдено: 0</span>
+                <span id="uniqueParticipants">Уникальных: 0</span>
+            </div>
+            <div id="participantsList"></div>
+        </div>
+    </div>
+    
+    <script src="livestream.js"></script>
+</body>
+</html>

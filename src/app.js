@@ -73,6 +73,7 @@ function loadLastResults() {
             const results = JSON.parse(savedResults);
             if (results.length > 0) {
                 displayResults(results, savedKeyword);
+                showClearButton(); // Добавь эту строку
             }
         } catch (error) {
             console.error('Ошибка загрузки сохраненных результатов:', error);
@@ -337,23 +338,23 @@ function displayResults(messages, keyword) {
         `;
     }).join('');
     
-        results.innerHTML = `
-            <p style="margin-bottom: 20px;">Найдено сообщений: ${messages.length}</p>
-            ${html}
-        `;
+    results.innerHTML = `
+        <p style="margin-bottom: 20px;">Найдено сообщений: ${messages.length}</p>
+        ${html}
+    `;
 
-        // Показываем секцию AI анализа если есть результаты
-        const aiSection = document.querySelector('.ai-section');
-        if (messages.length > 0) {
-            aiSection.style.display = 'block';
-        } else {
-            aiSection.style.display = 'none';
-        }
+    // Показываем секцию AI анализа если есть результаты
+    const aiSection = document.querySelector('.ai-section');
+    if (messages.length > 0) {
+        aiSection.style.display = 'block';
+        showClearButton(); // Добавь эту строку
+    } else {
+        aiSection.style.display = 'none';
+    }
 
-        // Сохраняем результаты поиска
-        localStorage.setItem('lastResults', JSON.stringify(messages));
-        localStorage.setItem('lastKeywordUsed', keyword);
-
+    // Сохраняем результаты поиска
+    localStorage.setItem('lastResults', JSON.stringify(messages));
+    localStorage.setItem('lastKeywordUsed', keyword);
 }
 
 // Функция обновления счётчика групп
@@ -383,6 +384,35 @@ function loadSelectedGroups() {
         updateGroupsCounter();
     }
 }
+
+// Функция очистки результатов
+function clearResults() {
+    if (confirm('Вы уверены, что хотите очистить все результаты поиска?')) {
+        // Очищаем результаты на странице
+        results.innerHTML = '';
+        
+        // Скрываем AI секцию
+        const aiSection = document.querySelector('.ai-section');
+        aiSection.style.display = 'none';
+        
+        // Скрываем кнопку очистки
+        document.getElementById('clearResultsBtn').style.display = 'none';
+        
+        // Очищаем сохраненные результаты
+        localStorage.removeItem('lastResults');
+        localStorage.removeItem('lastKeywordUsed');
+        
+        console.log('Результаты поиска очищены');
+    }
+}
+
+// Функция показа кнопки очистки
+function showClearButton() {
+    document.getElementById('clearResultsBtn').style.display = 'block';
+}
+
+// Обработчик кнопки очистки
+document.getElementById('clearResultsBtn').addEventListener('click', clearResults);
 
 
 // Добавляем слушатель на изменение чекбоксов
