@@ -20,21 +20,25 @@
             </div>
         </div>
         
-        <div class="add-session-section">
-            <h2>Добавить новую сессию</h2>
-            <a href="/qr-auth.html" class="back-link">QR авторизация →</a>
-            <div class="add-session-form">
-                <div class="input-group">
-                    <label for="sessionName">Название сессии:</label>
-                    <input type="text" id="sessionName" placeholder="Например: Основной аккаунт">
-                </div>
-                <div class="input-group">
-                    <label for="phoneNumber">Номер телефона:</label>
-                    <input type="tel" id="phoneNumber" placeholder="+7900123456">
-                </div>
-                <button id="addSessionBtn" class="start-btn">Добавить сессию</button>
-            </div>
+<div class="add-session-section">
+    <h2>Добавить новую сессию</h2>
+    <div class="add-session-form">
+        <div class="input-group">
+            <label for="sessionName">Название сессии:</label>
+            <input type="text" id="sessionName" placeholder="Например: Основной аккаунт">
         </div>
+        <div class="input-group">
+            <label for="phoneNumber">Номер телефона:</label>
+            <input type="tel" id="phoneNumber" placeholder="+380501234567">
+        </div>
+        <button id="addSessionBtn" class="start-btn">Создать сессию</button>
+    </div>
+    <div class="terminal-info">
+        <h4>⚠️ Как это работает:</h4>
+        <p>После нажатия кнопки перейдите в терминал сервера и введите SMS код</p>
+        <p>У вас есть примерно 30 секунд для ввода кода</p>
+    </div>
+</div>
         
         <div class="sessions-list-section">
             <h2>Все сессии</h2>

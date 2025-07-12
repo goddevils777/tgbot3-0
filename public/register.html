@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="auth-form">
+            <h1>Регистрация</h1>
+            
+            <form id="registerForm">
+                <div class="input-group">
+                    <label for="login">Логин:</label>
+                    <input type="text" id="login" required minlength="3" maxlength="20">
+                    <small>От 3 до 20 символов</small>
+                </div>
+                <div class="input-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" required minlength="6">
+                    <small>Минимум 6 символов</small>
+                </div>
+                <div class="input-group">
+                    <label for="confirmPassword">Подтвердите пароль:</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+                <button type="submit" class="start-btn">Зарегистрироваться</button>
+            </form>
+            
+            <div class="auth-links">
+                <p>Уже есть аккаунт? <a href="/login.html">Войти</a></p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="auth.js"></script>
+</body>
+</html>

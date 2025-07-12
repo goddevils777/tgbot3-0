@@ -103,66 +103,7 @@ function displayAllSessions(sessions) {
     `).join('');
 }
 
-// Добавление новой сессии
-async function addNewSession() {
-    const sessionName = document.getElementById('sessionName').value.trim();
-    const phoneNumber = document.getElementById('phoneNumber').value.trim();
-    
-    if (!sessionName) {
-        alert('Введите название сессии');
-        return;
-    }
-    
-    if (!phoneNumber) {
-        alert('Введите номер телефона');
-        return;
-    }
-    
-    // Проверяем формат номера телефона
-    if (!phoneNumber.match(/^\+?[1-9]\d{1,14}$/)) {
-        alert('Введите корректный номер телефона');
-        return;
-    }
-    
-    try {
-        const addBtn = document.getElementById('addSessionBtn');
-        addBtn.disabled = true;
-        addBtn.textContent = 'Создание сессии...';
-        
-        const response = await fetch('/api/add-session', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: sessionName,
-                phone: phoneNumber
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('Сессия успешно создана!');
-            
-            // Очищаем форму
-            document.getElementById('sessionName').value = '';
-            document.getElementById('phoneNumber').value = '';
-            
-            // Перезагружаем списки
-            await loadCurrentSession();
-            await loadAllSessions();
-        } else {
-            alert(`Ошибка создания сессии: ${data.error}`);
-        }
-    } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
-    } finally {
-        const addBtn = document.getElementById('addSessionBtn');
-        addBtn.disabled = false;
-        addBtn.textContent = 'Добавить сессию';
-    }
-}
+
 
 // Переключение на другую сессию
 async function switchSession(sessionId) {
@@ -220,4 +161,123 @@ async function deleteSession(sessionId) {
 // Настройка обработчиков событий
 function setupEventHandlers() {
     document.getElementById('addSessionBtn').addEventListener('click', addNewSession);
+}
+
+// Загрузка файла сессии
+async function uploadSessionFile() {
+    const fileInput = document.getElementById('sessionFile');
+    const sessionNameInput = document.getElementById('sessionName');
+    
+    const file = fileInput.files[0];
+    const sessionName = sessionNameInput.value.trim();
+    
+    if (!file) {
+        alert('Выберите файл сессии');
+        return;
+    }
+    
+    if (!sessionName) {
+        alert('Введите название сессии');
+        return;
+    }
+    
+    try {
+        const uploadBtn = document.getElementById('uploadSessionBtn');
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Загружаем...';
+        
+        const formData = new FormData();
+        formData.append('sessionFile', file);
+        formData.append('sessionName', sessionName);
+        
+        const response = await fetch('/api/upload-session', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Сессия успешно загружена!');
+            
+            // Очищаем форму
+            fileInput.value = '';
+            sessionNameInput.value = '';
+            
+            // Перезагружаем списки
+            await loadCurrentSession();
+            await loadAllSessions();
+        } else {
+            alert(`Ошибка загрузки: ${data.error}`);
+        }
+    } catch (error) {
+        alert(`Ошибка соединения: ${error.message}`);
+    } finally {
+        const uploadBtn = document.getElementById('uploadSessionBtn');
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Загрузить сессию';
+    }
+}
+
+// Добавление новой сессии
+async function addNewSession() {
+    const sessionName = document.getElementById('sessionName').value.trim();
+    const phoneNumber = document.getElementById('phoneNumber').value.trim();
+    
+    if (!sessionName) {
+        alert('Введите название сессии');
+        return;
+    }
+    
+    if (!phoneNumber) {
+        alert('Введите номер телефона');
+        return;
+    }
+    
+    // Проверяем формат номера телефона
+    if (!phoneNumber.match(/^\+?[1-9]\d{1,14}$/)) {
+        alert('Введите корректный номер телефона');
+        return;
+    }
+    
+    try {
+        const addBtn = document.getElementById('addSessionBtn');
+        addBtn.disabled = true;
+        addBtn.textContent = 'Создание сессии...';
+        
+        alert('Перейдите в терминал сервера для ввода SMS кода!');
+        
+        const response = await fetch('/api/add-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: sessionName,
+                phone: phoneNumber
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Сессия успешно создана!');
+            
+            // Очищаем форму
+            document.getElementById('sessionName').value = '';
+            document.getElementById('phoneNumber').value = '';
+            
+            // Перезагружаем списки
+            await loadCurrentSession();
+            await loadAllSessions();
+        } else {
+            alert(`Ошибка создания сессии: ${data.error}`);
+        }
+    } catch (error) {
+        alert(`Ошибка соединения: ${error.message}`);
+    } finally {
+        const addBtn = document.getElementById('addSessionBtn');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Создать сессию';
+    }
 }

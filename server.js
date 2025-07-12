@@ -4,6 +4,7 @@ const TelegramClientAPI = require('./src/telegramClient');
 const AIAnalyzer = require('./src/aiAnalyzer');
 const BroadcastManager = require('./src/broadcastManager');
 const SessionManager = require('./src/sessionManager');
+const UserManager = require('./src/userManager');
 
 const app = express();
 const PORT = 3000;
@@ -13,62 +14,55 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/src', express.static('src'));
 
+const userManager = new UserManager();
+
+
+// Middleware для проверки пользователя  
+app.use((req, res, next) => {
+    // Правильное извлечение cookie
+    const cookies = req.headers.cookie;
+    let userId = null;
+    
+    if (cookies) {
+        const userIdCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('userId='));
+        if (userIdCookie) {
+            userId = userIdCookie.split('=')[1];
+        }
+    }
+    
+    // Проверяем есть ли userId и существует ли пользователь в users.json
+    if (!userId || !userManager.userExists(userId)) {
+        // Если нет авторизации - перенаправляем на страницу входа
+        if (req.url.startsWith('/api/') && req.url !== '/api/register' && req.url !== '/api/login') {
+            return res.json({ success: false, error: 'Необходима авторизация', redirect: '/login.html' });
+        }
+        
+        // Для обычных страниц перенаправляем на login
+        if (!req.url.includes('login') && !req.url.includes('register') && !req.url.includes('auth.js') && !req.url.includes('style.css')) {
+            return res.redirect('/login.html');
+        }
+        
+        req.userId = null;
+        req.userSessionsDir = null;  // НЕ вызываем getUserSessionsDir для null
+    } else {
+        userManager.updateLastActive(userId);
+        req.userId = userId;
+        req.userSessionsDir = userManager.getUserSessionsDir(userId);  // Только для авторизованных
+    }
+    
+    next();
+});
+
+
+
 const telegram = new TelegramClient();
-const sessionManager = new SessionManager();
+let sessionManager = new SessionManager();
 const aiAnalyzer = new AIAnalyzer();
 
-// Создаем TelegramClientAPI с поддержкой SessionManager
-let telegramClientAPI = null;
 
-// Инициализируем с текущей сессией или создаем пустой
-async function initializeTelegramClient() {
-    const activeClient = sessionManager.getActiveClient();
-    console.log('Активный клиент после автоподключения:', activeClient ? 'найден' : 'не найден');
-    
-    if (activeClient) {
-        // Создаем объект с методами из TelegramClientAPI
-        const TelegramClientAPI = require('./src/telegramClient');
-        const tempInstance = new TelegramClientAPI();
-        
-        telegramClientAPI = {
-            client: activeClient,
-            isConnected: true,
-            // Привязываем методы к нашему объекту
-            searchMessages: tempInstance.searchMessages.bind({ client: activeClient, isConnected: true }),
-            autoSearchMessages: tempInstance.autoSearchMessages.bind({ client: activeClient, isConnected: true }),
-            getChats: tempInstance.getChats.bind({ client: activeClient, isConnected: true }),
-            getChannels: tempInstance.getChannels.bind({ client: activeClient, isConnected: true }),
-            checkLiveStream: tempInstance.checkLiveStream.bind({ client: activeClient, isConnected: true }),
-            getLastMessageId: tempInstance.getLastMessageId.bind({ client: activeClient, isConnected: true })
-        };
-        
-        console.log('TelegramClientAPI инициализирован с активной сессией');
-        console.log('Клиент подключен:', telegramClientAPI.isConnected);
-    } else {
-        // Создаем пустую заглушку
-        telegramClientAPI = {
-            client: null,
-            isConnected: false,
-            searchMessages: async () => [],
-            autoSearchMessages: async () => [],
-            getChats: async () => [],
-            getChannels: async () => [],
-            checkLiveStream: async () => ({ isLive: false, streamInfo: null, participants: [] }),
-            getLastMessageId: async () => 0
-        };
-        
-        console.log('Нет активной сессии, используйте страницу управления сессиями');
-    }
-}
-
-const broadcastManager = new BroadcastManager(telegramClientAPI);
-
-// Инициализируем клиент при запуске
-sessionManager.loadSavedSessions(); // Сначала загружаем сессии и автоподключаемся
 
 // Инициализируем телеграм клиент ПОСЛЕ автоподключения
 setTimeout(async () => {
-    await initializeTelegramClient();
     console.log('Telegram Client API готов к работе');
 }, 2000); // Даем 2 секунды на автоподключение
 
@@ -100,7 +94,7 @@ app.post('/api/search', async (req, res) => {
         }
         
         // Реальный поиск сообщений
-        const results = await telegramClientAPI.searchMessages(keywords, groups, limit);
+        const results = await req.telegramClientAPI.searchMessages(keywords, groups, limit);
         res.json({ success: true, results: results });
     } catch (error) {
         res.json({ success: false, error: error.message });
@@ -129,11 +123,22 @@ app.get('/api/session-info', async (req, res) => {
 });
 
 // API для получения групп
+// API для получения групп
 app.get('/api/groups', async (req, res) => {
     try {
-        const groups = await telegramClientAPI.getChats();
+        console.log('Запрос групп, telegramClientAPI:', req.telegramClientAPI ? 'есть' : 'нет');
+        
+        if (!req.telegramClientAPI) {
+            return res.json({ success: false, error: 'Нет активной сессии' });
+        }
+        
+        console.log('Получаем группы...');
+        const groups = await req.telegramClientAPI.getChats();
+        console.log(`Найдено групп: ${groups.length}`);
+        
         res.json({ success: true, groups: groups });
     } catch (error) {
+        console.error('Ошибка получения групп:', error);
         res.json({ success: false, error: error.message });
     }
 });
@@ -141,7 +146,7 @@ app.get('/api/groups', async (req, res) => {
 // API для получения каналов (для Live Stream)
 app.get('/api/channels', async (req, res) => {
     try {
-        const channels = await telegramClientAPI.getChannels();
+        const channels = await req.telegramClientAPI.getChannels();
         res.json({ success: true, channels: channels });
     } catch (error) {
         res.json({ success: false, error: error.message });
@@ -161,7 +166,7 @@ app.post('/api/check-stream', async (req, res) => {
         }
         
         // Проверяем статус стрима и получаем участников
-        const streamData = await telegramClientAPI.checkLiveStream(channelId, channelName);
+        const streamData = await req.telegramClientAPI.checkLiveStream(channelId, channelName);
         
         res.json({ 
             success: true, 
@@ -227,10 +232,10 @@ app.post('/api/autosearch', async (req, res) => {
         
         // Получаем новые сообщения из группы
         const group = { id: groupId, name: groupName };
-        const allMessages = await telegramClientAPI.searchMessages(keywords, [group], 50);
+        const allMessages = await req.telegramClientAPI.searchMessages(keywords, [group], 50);
         
         // Получаем новые сообщения из группы
-        const newMessages = await telegramClientAPI.autoSearchMessages(keywords, groupId, groupName, lastMessageId);
+        const newMessages = await req.telegramClientAPI.autoSearchMessages(keywords, groupId, groupName, lastMessageId);
         
         res.json({ success: true, results: newMessages });
     } catch (error) {
@@ -252,7 +257,7 @@ app.post('/api/init-autosearch', async (req, res) => {
         }
         
         // Получаем последнее сообщение из группы
-        const lastMessageId = await telegramClientAPI.getLastMessageId(groupId);
+        const lastMessageId = await req.telegramClientAPI.getLastMessageId(groupId);
         
         res.json({ 
             success: true, 
@@ -302,7 +307,7 @@ app.post('/api/create-broadcast', async (req, res) => {
         }
         
         // Создаем задание
-        const task = broadcastManager.createTask({
+        const task = req.broadcastManager.createTask({
             message: message.trim(),
             groups: groups,
             startDateTime: startDateTime,
@@ -320,7 +325,7 @@ app.post('/api/create-broadcast', async (req, res) => {
 // API для получения списка заданий рассылки
 app.get('/api/broadcast-tasks', async (req, res) => {
     try {
-        const tasks = broadcastManager.getAllTasks();
+        const tasks = req.broadcastManager.getAllTasks();
         res.json({ success: true, tasks: tasks });
     } catch (error) {
         console.error('Ошибка получения заданий:', error);
@@ -333,7 +338,7 @@ app.delete('/api/broadcast-tasks/:taskId', async (req, res) => {
     try {
         const { taskId } = req.params;
         
-        const deleted = broadcastManager.deleteTask(taskId);
+        const deleted = req.broadcastManager.deleteTask(taskId);
         
         if (deleted) {
             res.json({ success: true });
@@ -371,33 +376,7 @@ app.get('/api/sessions', async (req, res) => {
     }
 });
 
-// API для добавления новой сессии
-app.post('/api/add-session', async (req, res) => {
-    try {
-        const { name, phone } = req.body;
-        
-        if (!name || !phone) {
-            return res.json({ 
-                success: false, 
-                error: 'Введите название и номер телефона' 
-            });
-        }
-        
-        console.log(`Создание новой сессии: ${name} (${phone})`);
-        const result = await sessionManager.createSession(name, phone);
-        
-        if (result.success) {
-            // Обновляем telegramClientAPI для новой сессии
-            await initializeTelegramClient();
-            res.json({ success: true, message: 'Сессия успешно создана' });
-        } else {
-            res.json({ success: false, error: result.error });
-        }
-    } catch (error) {
-        console.error('Ошибка создания сессии:', error);
-        res.json({ success: false, error: error.message });
-    }
-});
+
 
 // API для переключения сессии
 app.post('/api/switch-session', async (req, res) => {
@@ -409,7 +388,7 @@ app.post('/api/switch-session', async (req, res) => {
         
         if (result.success) {
             // Обновляем telegramClientAPI для новой сессии
-            await initializeTelegramClient();
+            
             res.json({ success: true, message: 'Сессия успешно переключена' });
         } else {
             res.json({ success: false, error: result.error });
@@ -429,8 +408,8 @@ app.delete('/api/sessions/:sessionId', async (req, res) => {
         const result = await sessionManager.deleteSession(sessionId);
         
         if (result.success) {
-            // Если удалили текущую сессию, нужно переинициализировать клиент
-            await initializeTelegramClient();
+           
+           
             res.json({ success: true, message: 'Сессия успешно удалена' });
         } else {
             res.json({ success: false, error: result.error });
@@ -441,72 +420,77 @@ app.delete('/api/sessions/:sessionId', async (req, res) => {
     }
 });
 
-// API для генерации QR-кода
-app.post('/api/generate-qr', async (req, res) => {
+// API для добавления новой сессии
+app.post('/api/add-session', async (req, res) => {
     try {
-        const { sessionName } = req.body;
+        const { name, phone } = req.body;
         
-        if (!sessionName || sessionName.trim().length < 3) {
+        if (!name || !phone) {
             return res.json({ 
                 success: false, 
-                error: 'Название сессии должно быть не менее 3 символов' 
+                error: 'Введите название и номер телефона' 
             });
         }
         
-        const result = await sessionManager.generateQRCode(sessionName.trim());
+        console.log(`Создание новой сессии: ${name} (${phone})`);
+        const result = await sessionManager.createSession(name, phone);
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Ошибка создания сессии:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для регистрации
+app.post('/api/register', (req, res) => {
+    try {
+        const { login, password } = req.body;
+        
+        if (!login || !password) {
+            return res.json({ 
+                success: false, 
+                error: 'Введите логин и пароль' 
+            });
+        }
+        
+        if (login.length < 3 || password.length < 6) {
+            return res.json({ 
+                success: false, 
+                error: 'Логин от 3 символов, пароль от 6 символов' 
+            });
+        }
+        
+        const result = userManager.registerUser(login, password);
+        res.json(result);
+    } catch (error) {
+        console.error('Ошибка регистрации:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для авторизации
+app.post('/api/login', (req, res) => {
+    try {
+        const { login, password } = req.body;
+        
+        if (!login || !password) {
+            return res.json({ 
+                success: false, 
+                error: 'Введите логин и пароль' 
+            });
+        }
+        
+        const result = userManager.loginUser(login, password);
         
         if (result.success) {
-            res.json({ 
-                success: true, 
-                token: result.token,
-                qrCodeUrl: result.qrCodeUrl
-            });
-        } else {
-            res.json({ success: false, error: result.error });
-        }
-    } catch (error) {
-        console.error('Ошибка генерации QR-кода:', error);
-        res.json({ success: false, error: error.message });
-    }
-});
-
-// API для проверки статуса QR авторизации
-app.post('/api/check-qr-status', async (req, res) => {
-    try {
-        const { token } = req.body;
-        
-        if (!token) {
-            return res.json({ 
-                success: false, 
-                error: 'Не указан токен' 
-            });
+            // Устанавливаем cookie с userId
+            res.setHeader('Set-Cookie', `userId=${result.userId}; Path=/; HttpOnly; Max-Age=31536000`);
         }
         
-        const result = await sessionManager.checkQRStatus(token);
-        
-        res.json({ 
-            success: true, 
-            status: result.status,
-            sessionId: result.sessionId || null
-        });
+        res.json(result);
     } catch (error) {
-        console.error('Ошибка проверки статуса QR:', error);
-        res.json({ success: false, error: error.message });
-    }
-});
-
-// API для отмены QR авторизации
-app.post('/api/cancel-qr', async (req, res) => {
-    try {
-        const { token } = req.body;
-        
-        if (token) {
-            await sessionManager.cancelQRCode(token);
-        }
-        
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Ошибка отмены QR-кода:', error);
+        console.error('Ошибка авторизации:', error);
         res.json({ success: false, error: error.message });
     }
 });

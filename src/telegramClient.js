@@ -4,20 +4,9 @@ const input = require('input');
 const config = require('../config');
 
 class TelegramClientAPI {
-    constructor() {
-        const fs = require('fs');
-        const path = './telegram_session.txt';
-        
-        let sessionString = '';
-        if (fs.existsSync(path)) {
-            sessionString = fs.readFileSync(path, 'utf8');
-        }
-        
-        this.session = new StringSession(sessionString);
-        this.client = new TelegramClient(this.session, config.apiId, config.apiHash, {
-            connectionRetries: 5,
-        });
-        this.isConnected = false;
+    constructor(client) {
+        this.client = client; // Используем переданный клиент
+        this.isConnected = true; // Клиент уже подключен
     }
 
     async connect() {
@@ -44,15 +33,48 @@ class TelegramClientAPI {
     }
     
     async getChats() {
+        console.log('getChats вызван, isConnected:', this.isConnected);
+        console.log('client состояние:', this.client ? 'есть' : 'нет');
+        
         if (!this.isConnected) {
+            console.log('Клиент не подключен, возвращаем пустой массив');
             return [];
         }
 
         try {
+            console.log('Получаем диалоги...');
+            
+            // Проверяем правильное свойство
+            console.log('Статус клиента - _connected:', this.client._connected);
+            console.log('Статус клиента - isConnected():', this.client.isConnected ? this.client.isConnected() : 'метод не найден');
+
+            // Используем правильную проверку
+            // Используем правильную проверку
+            if (!this.client._connected) {
+                console.log('Клиент отключен, создаем новый клиент с той же сессией...');
+                
+                // Получаем сессию из текущего клиента
+                const sessionString = this.client.session.save();
+                console.log('SessionString получен, длина:', sessionString.length);
+                
+                // Создаем новый клиент с той же сессией
+                const { StringSession } = require('telegram/sessions');
+                const session = new StringSession(sessionString);
+                const newClient = new TelegramClient(session, config.apiId, config.apiHash, {
+                    connectionRetries: 5,
+                });
+                
+                await newClient.connect();
+                this.client = newClient; // Заменяем клиент
+                console.log('Новый клиент создан и подключен');
+            }
+            
             const dialogs = await this.client.getDialogs();
+            console.log(`Получено диалогов: ${dialogs.length}`);
             const chats = [];
             
             for (const dialog of dialogs) {
+                console.log(`Обрабатываем диалог: ${dialog.title}, isGroup: ${dialog.isGroup}, isChannel: ${dialog.isChannel}`);
                 // Проверяем, можно ли писать в чат
                 if (dialog.entity && !dialog.entity.left && !dialog.entity.kicked) {
                     if (dialog.isGroup || (dialog.isChannel && !dialog.entity.broadcast)) {

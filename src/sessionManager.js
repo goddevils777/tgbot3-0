@@ -10,15 +10,45 @@ class SessionManager {
     constructor() {
         this.sessions = new Map(); // Хранилище активных сессий
         this.currentSessionId = null;
-        this.sessionsDir = './sessions'; // Папка для хранения файлов сессий
-        this.qrSessions = new Map(); // Добавь эту строку
+        this.sessionsDir = null; // Будет устанавливаться для каждого пользователя
+    }
+    
+    // Установка пользовательской папки сессий
+    async setUserSessionsDir(userSessionsDir) {
+
+        if (this.sessionsDir === userSessionsDir) {
+            return;
+        }
+        console.log(`Устанавливаем папку сессий: ${userSessionsDir}`);
+        this.sessionsDir = userSessionsDir;
         
-        // Создаем папку для сессий если её нет
         if (!fs.existsSync(this.sessionsDir)) {
-            fs.mkdirSync(this.sessionsDir);
+            fs.mkdirSync(this.sessionsDir, { recursive: true });
+            console.log(`Создана папка: ${this.sessionsDir}`);
         }
         
+        const savedCurrentSessionId = this.currentSessionId;
+        const savedActiveSessionData = savedCurrentSessionId ? this.sessions.get(savedCurrentSessionId) : null; // Исправлено!
+
+        this.sessions.clear();
+        this.currentSessionId = null;
         this.loadSavedSessions();
+
+        // Восстанавливаем активную сессию если она есть
+        if (savedCurrentSessionId && this.sessions.has(savedCurrentSessionId)) {
+            this.currentSessionId = savedCurrentSessionId;
+            
+            // Восстанавливаем состояние подключения если сессия была активной
+            const activeSession = this.sessions.get(savedCurrentSessionId);
+            if (activeSession && savedActiveSessionData) {
+                activeSession.isConnected = savedActiveSessionData.isConnected;
+                activeSession.client = savedActiveSessionData.client;
+                activeSession.connectedAt = savedActiveSessionData.connectedAt;
+            }
+            
+            console.log(`Восстановлена активная сессия: ${savedCurrentSessionId}`);
+        }
+        console.log(`Загружено ${this.sessions.size} сессий для пользователя`);
     }
 
     // Сохранение данных сессии в файл
@@ -101,12 +131,14 @@ class SessionManager {
             // Сохраняем в память и файл
             this.sessions.set(sessionId, sessionData);
             this.saveSessionData(sessionId, sessionData);
-
-            // Устанавливаем как текущую сессию
             this.currentSessionId = sessionId;
-            
-            // Сохраняем как последнюю сессию
             this.saveLastSessionId(sessionId);
+
+            // Устанавливаем сессию как подключенную
+            const createdSession = this.sessions.get(sessionId);
+            if (createdSession) {
+                createdSession.isConnected = true;
+            }
 
             console.log(`Сессия ${name} успешно создана`);
             return { success: true, sessionId };
@@ -120,13 +152,19 @@ class SessionManager {
     // Переключение на другую сессию
     async switchToSession(sessionId) {
         try {
+            console.log(`Начинаем переключение на сессию: ${sessionId}`);
+            
             const sessionData = this.sessions.get(sessionId);
             if (!sessionData) {
+                console.log('Сессия не найдена в памяти');
                 return { success: false, error: 'Сессия не найдена' };
             }
 
+            console.log(`Найдена сессия: ${sessionData.name}, sessionString: ${sessionData.sessionString ? 'есть' : 'нет'}`);
+
             // Отключаем текущую сессию если есть
             if (this.currentSessionId) {
+                console.log(`Отключаем текущую сессию: ${this.currentSessionId}`);
                 await this.disconnectSession(this.currentSessionId);
             }
 
@@ -200,12 +238,22 @@ class SessionManager {
 
     // Получение активного клиента
     getActiveClient() {
-        if (!this.currentSessionId) return null;
+        console.log('getActiveClient вызван, currentSessionId:', this.currentSessionId);
+        
+        if (!this.currentSessionId) {
+            console.log('Нет текущей сессии');
+            return null;
+        }
         
         const session = this.sessions.get(this.currentSessionId);
+        console.log('Найдена сессия:', session ? session.name : 'нет');
+        console.log('isConnected:', session ? session.isConnected : 'нет сессии');
+        console.log('client:', session && session.client ? 'есть' : 'нет');
+        
         return session && session.isConnected ? session.client : null;
     }
     
+
     // Загрузка сохраненных сессий при запуске
     loadSavedSessions() {
         try {
@@ -227,10 +275,7 @@ class SessionManager {
             
             console.log(`Загружено ${this.sessions.size} сохраненных сессий`);
             
-            // Автоподключение к последней сессии
-            setTimeout(async () => {
-                await this.autoConnectToLastSession();
-            }, 1000);
+
             
         } catch (error) {
             console.error('Ошибка загрузки сессий:', error);
@@ -278,207 +323,7 @@ class SessionManager {
         return false;
     }
 
-    // Генерация QR-кода для авторизации
-    async generateQRCode(sessionName) {
-        try {
-            const token = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-            
-            // Создаем временную сессию для QR авторизации
-            const session = new StringSession('');
-            const client = new TelegramClient(session, config.apiId, config.apiHash, {
-                connectionRetries: 5,
-            });
-
-            console.log('Генерируем QR-код для авторизации...');
-            
-            // Правильный способ QR авторизации
-            const qrCodePromise = client.signInUserWithQrCode(
-                { apiId: config.apiId, apiHash: config.apiHash },
-                {
-                    qrCode: async (qrCode) => {
-                        console.log('QR-код получен:', qrCode.token);
-                        
-                        // Сохраняем данные QR сессии
-                        const qrSession = this.qrSessions.get(token);
-                        if (qrSession) {
-                            qrSession.qrToken = qrCode.token;
-                            qrSession.qrCode = qrCode;
-                        }
-                        
-                        return qrCode.token;
-                    },
-                    password: async () => {
-                        console.log('Требуется пароль для QR авторизации');
-                        return ''; // Возвращаем пустой пароль - обычно не требуется для QR
-                    },
-                    onError: (err) => console.log('QR Auth Error:', err),
-                }
-            );
-            
-            // Создаем временный токен QR для мониторинга
-            const tempQRToken = `qr_${Date.now()}`;
-            
-            // Сохраняем данные QR сессии
-            this.qrSessions.set(token, {
-                sessionName: sessionName,
-                client: client,
-                session: session,
-                qrCodePromise: qrCodePromise,
-                status: 'pending',
-                createdAt: Date.now(),
-                expiresAt: Date.now() + (2 * 60 * 1000), // 2 минуты
-                qrToken: tempQRToken
-            });
-            
-            // Генерируем QR-код изображение
-            // Генерируем QR-код изображение
-            const qrCodeUrl = await this.generateQRCodeImage(tempQRToken);
-            
-            console.log('QR-код сгенерирован, токен:', token);
-            
-            // Запускаем мониторинг авторизации
-            this.monitorQRAuth(token);
-            
-            return {
-                success: true,
-                token: token,
-                qrCodeUrl: qrCodeUrl
-            };
-            
-        } catch (error) {
-            console.error('Ошибка генерации QR-кода:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // Мониторинг QR авторизации
-    async monitorQRAuth(token) {
-        const qrSession = this.qrSessions.get(token);
-        if (!qrSession) return;
-        
-        const checkAuth = async () => {
-            try {
-                // Проверяем не истек ли QR-код
-                if (Date.now() > qrSession.expiresAt) {
-                    qrSession.status = 'expired';
-                    return;
-                }
-                
-                // Проверяем статус авторизации
-                const authResult = await qrSession.qrCodeData();
-                
-                if (authResult) {
-                    // Авторизация успешна
-                    console.log('QR авторизация успешна');
-                    
-                    const sessionId = Date.now().toString();
-                    const sessionData = {
-                        id: sessionId,
-                        name: qrSession.sessionName,
-                        phone: authResult.user.phone || 'QR Auth',
-                        createdAt: new Date().toISOString(),
-                        sessionString: qrSession.session.save(),
-                        client: qrSession.client,
-                        isConnected: true,
-                        connectedAt: new Date().toISOString()
-                    };
-                    
-                    // Сохраняем сессию
-                    this.sessions.set(sessionId, sessionData);
-                    this.saveSessionData(sessionId, sessionData);
-                    this.currentSessionId = sessionId;
-                    this.saveLastSessionId(sessionId);
-                    
-                    qrSession.status = 'authorized';
-                    qrSession.sessionId = sessionId;
-                    
-                    console.log(`QR сессия создана: ${qrSession.sessionName}`);
-                    return;
-                }
-                
-                // Продолжаем проверку через 2 секунды
-                if (qrSession.status === 'pending') {
-                    setTimeout(checkAuth, 2000);
-                }
-                
-            } catch (error) {
-                console.error('Ошибка мониторинга QR авторизации:', error);
-                qrSession.status = 'error';
-            }
-        };
-        
-        checkAuth();
-    }
-
-    // Проверка статуса QR авторизации
-    async checkQRStatus(token) {
-        const qrSession = this.qrSessions.get(token);
-        
-        if (!qrSession) {
-            return { status: 'expired' };
-        }
-        
-        // Проверяем не истек ли токен
-        if (Date.now() > qrSession.expiresAt) {
-            qrSession.status = 'expired';
-            this.qrSessions.delete(token);
-        }
-        
-        return {
-            status: qrSession.status,
-            sessionId: qrSession.sessionId || null
-        };
-    }
-
-    // Отмена QR авторизации
-    async cancelQRCode(token) {
-        const qrSession = this.qrSessions.get(token);
-        
-        if (qrSession) {
-            try {
-                if (qrSession.client) {
-                    await qrSession.client.disconnect();
-                }
-            } catch (error) {
-                console.error('Ошибка отключения QR клиента:', error);
-            }
-            
-            this.qrSessions.delete(token);
-            console.log('QR авторизация отменена:', token);
-        }
-    }
-
-    // Генерация простого SVG QR-кода (заглушка)
-    generateQRSVG(token) {
-        return `<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="200" height="200" fill="white"/>
-            <text x="100" y="100" text-anchor="middle" font-family="Arial" font-size="12" fill="black">
-                QR Code: ${token.substr(0, 20)}...
-            </text>
-            <text x="100" y="120" text-anchor="middle" font-family="Arial" font-size="10" fill="gray">
-                Scan in Telegram
-            </text>
-        </svg>`;
-    }
-
-    // Генерация QR-кода как Data URL
-    async generateQRCodeImage(token) {
-        try {
-            const qrCodeDataURL = await QRCode.toDataURL(token, {
-                width: 256,
-                margin: 2,
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                }
-            });
-            return qrCodeDataURL;
-        } catch (error) {
-            console.error('Ошибка генерации QR-кода:', error);
-            // Возвращаем заглушку в случае ошибки
-            return `data:image/svg+xml;base64,${Buffer.from(this.generateQRSVG(token)).toString('base64')}`;
-        }
-    }
+    
 }
 
 module.exports = SessionManager;
