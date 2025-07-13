@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Автопоиск - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+
+        </header>
+
+        <!-- Статус автопоиска -->
+        <div class="autosearch-status-section">
+            <h2>Статус автопоиска</h2>
+            <div id="autoSearchStatus" class="autosearch-status-list">
+                <div class="status-loading">Загрузка статуса...</div>
+            </div>
+        </div>
+        
+        <div class="autosearch-setup">
+            <div class="current-session-info">
+                <h2>Настройка автопоиска</h2>
+                <div id="currentSessionName" class="session-name-display">
+                    <span class="session-loading">Загрузка сессии...</span>
+                </div>
+                <p class="info-note">⚠️ При переключении сессии автопоиск останавливается</p>
+            </div>
+
+            <div class="keywords-container">
+                <h3>Ключевые слова</h3>
+                <input type="text" id="autoSearchInput" class="search-input" placeholder="Введите слово и нажмите пробел">
+                <div id="autoKeywordsList" class="keywords-list"></div>
+            </div>
+            
+            <div class="groups-header">
+                <h3>Выберите группы для мониторинга</h3>
+                <div class="groups-actions">
+                    <button id="selectAllAuto" class="small-btn">Выбрать все</button>
+                    <button id="clearAutoSelection" class="small-btn">Снять все</button>
+                    <span id="autoGroupsCounter" class="groups-counter">Выбрано: 0</span>
+                </div>
+            </div>
+            <div id="autoGroupsList"></div>
+            
+            <div class="controls">
+                <button id="startAutoSearch" class="start-btn">Начать автопоиск</button>
+                <button id="stopAutoSearch" class="stop-btn" disabled>Остановить</button>
+                <span id="currentStatus" class="status">Остановлен</span>
+            </div>
+        </div>
+        
+        <div class="autosearch-results">
+            <div class="results-header">
+                <h2>Результаты автопоиска</h2>
+                <div class="results-actions">
+                    <button id="saveAutosearchToHistory" class="btn-save-history" style="display: none;">
+                        💾 Сохранить в историю
+                    </button>
+                </div>
+            </div>
+            <div id="autoResults"></div>
+        </div>
+    </div>
+ 
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        // Инициализация шапки для автопоиска
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('⚡ Автопоиск сообщений в реальном времени', 'autosearch');
+        });
+    </script>
+
+    <script src="autosearch.js"></script>
+
+</body>
+</html>

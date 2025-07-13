@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+
+        </div>
+        
+        <div class="search-section">
+            <div class="keywords-container">
+                <input type="text" id="searchInput" placeholder="Введите слово и нажмите пробел">
+                <div id="keywordsList" class="keywords-list"></div>
+            </div>
+            <input type="number" id="messageCount" placeholder="Количество сообщений" value="100" min="1" max="10000">
+            <button id="searchBtn">Искать</button>
+        </div>
+        
+        <div class="groups-section">
+            <div class="groups-header">
+                <h2>Выберите группы</h2>
+                <div class="groups-actions">
+                    <button id="selectAllBtn" class="small-btn">Выбрать все</button>
+                    <button id="deselectAllBtn" class="small-btn">Снять все</button>
+                    <span id="groupsCounter" class="groups-counter">Выбрано: 0</span>
+                </div>
+            </div>
+            <div id="groupsList"></div>
+        </div>
+
+        <div class="ai-section" style="display: none;">
+            <h2>AI Анализ найденных сообщений</h2>
+            <div class="ai-input-section">
+                <textarea id="aiPrompt" placeholder="Введите промпт для AI анализа (например: Содержит ли это сообщение информацию о продаже товаров?)"></textarea>
+                <button id="analyzeBtn">Анализировать через AI</button>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <div class="results-header">
+                <h2>Результаты</h2>
+                <div class="results-actions">
+                    <button id="saveToHistory" class="btn-save-history" style="display: none;">
+                        💾 Сохранить в историю
+                    </button>
+                    <button id="clearResultsBtn" class="small-btn" style="display: none;">
+                        Очистить результаты
+                    </button>
+                </div>
+            </div>
+            <div id="results"></div>
+        </div>
+    </div>
+    
+    
+
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        // Инициализация шапки для главной страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('🔍 Поиск сообщений в Telegram', 'index');
+        });
+    </script>
+
+    <script src="/src/app.js"></script>
+</body>
+</html>

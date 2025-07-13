@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Админ панель - Управление заявками</h1>
+            <div class="header-info">
+                <div id="userInfo" class="session-info">
+                    <span class="session-loading">Загрузка...</span>
+                </div>
+                <a href="/" class="back-link">← Главная</a>
+            </div>
+        </div>
+
+        <div class="admin-stats">
+            <div class="stat-card">
+                <span class="stat-number" id="totalRequests">0</span>
+                <span class="stat-label">Всего заявок</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="pendingRequests">0</span>
+                <span class="stat-label">Ожидают</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="processingRequests">0</span>
+                <span class="stat-label">В работе</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="completedRequests">0</span>
+                <span class="stat-label">Выполнено</span>
+            </div>
+        </div>
+
+        <div class="admin-controls">
+            <div class="filters">
+                <select id="statusFilter">
+                    <option value="all">Все статусы</option>
+                    <option value="pending">Ожидают обработки</option>
+                    <option value="processing">В обработке</option>
+                    <option value="completed">Выполнены</option>
+                    <option value="rejected">Отклонены</option>
+                </select>
+                <input type="text" id="searchFilter" placeholder="Поиск по ID или телефону">
+                <button id="refreshBtn" class="small-btn">Обновить</button>
+            </div>
+        </div>
+
+        <div class="requests-admin-section">
+            <h2>Заявки на подключение</h2>
+            <div id="adminRequestsList" class="admin-requests-list">
+                <div class="requests-loading">Загрузка заявок...</div>
+            </div>
+        </div>
+
+        <!-- Модальное окно для обработки заявки -->
+        <div id="processModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Обработка заявки</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="modalRequestInfo"></div>
+                    <div class="input-group">
+                        <label for="newStatus">Статус:</label>
+                        <select id="newStatus">
+                            <option value="pending">Ожидает обработки</option>
+                            <option value="processing">В обработке</option>
+                            <option value="completed">Выполнена</option>
+                            <option value="rejected">Отклонена</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="statusNotes">Примечание:</label>
+                        <textarea id="statusNotes" placeholder="Комментарий к изменению статуса"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="updateStatusBtn" class="start-btn">Обновить статус</button>
+                        <button id="createSessionBtn" class="start-btn">Создать сессию</button>
+                        <button class="cancel-btn">Отмена</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="admin.js"></script>
+</body>
+</html>

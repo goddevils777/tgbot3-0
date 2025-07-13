@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление сессиями - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+         
+        </div>
+        
+ 
+        
+<div class="add-session-section">
+    <h2>Подключить Telegram аккаунт</h2>
+    <div class="add-session-form">
+        <div class="input-group">
+            <label for="sessionName">Название сессии:</label>
+            <input type="text" id="sessionName" placeholder="Например: Основной аккаунт">
+        </div>
+        <div class="input-group">
+            <label for="phoneNumber">Номер телефона:</label>
+            <input type="tel" id="phoneNumber" placeholder="+380501234567">
+        </div>
+        <button id="createRequestBtn" class="start-btn">Отправить заявку</button>
+    </div>
+    <div class="support-info">
+        <h4>📞 Поддержка:</h4>
+        <p>После отправки заявки свяжитесь с менеджером:</p>
+        <p><strong>Telegram: @support_manager</strong></p>
+        <p>Сообщите ваш уникальный ID заявки для подключения аккаунта</p>
+    </div>
+</div>
+
+<div class="requests-section">
+    <h2>Мои заявки</h2>
+    <div id="requestsList" class="requests-list">
+        <div class="requests-loading">Загрузка заявок...</div>
+    </div>
+</div>
+        
+        <div class="sessions-list-section">
+            <h2>Все сессии</h2>
+            <div id="sessionsList" class="sessions-list">
+                <div class="sessions-loading">Загрузка списка сессий...</div>
+            </div>
+        </div>
+    </div>
+    
+
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        // Инициализация шапки для сессий
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('👤 Управление сессиями', 'sessions');
+        });
+    </script>
+
+    <script src="sessions.js"></script>
+</body>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="auth-form">
+            <h1>Вход в систему</h1>
+            
+            <form id="loginForm">
+                <div class="input-group">
+                    <label for="login">Логин:</label>
+                    <input type="text" id="login" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="start-btn">Войти</button>
+            </form>
+
+            <div class="auth-divider">
+                <span>или</span>
+            </div>
+
+            <div class="google-auth-section">
+                <div id="googleLoginButton"></div>
+            </div>
+            
+            <div class="auth-links">
+                <p>Нет аккаунта? <a href="/register.html">Зарегистрироваться</a></p>
+            </div>
+        </div>
+    </div>
+    <!-- Подключение стилей и скриптов Google авторизации -->
+    <link rel="stylesheet" href="styles/googleAuth.css">
+    <script src="components/googleAuth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Инициализация Google авторизации
+            initGoogleAuth();
+            
+            // Добавляем Google кнопку
+            const googleButtonContainer = document.getElementById('googleLoginButton');
+            if (googleButtonContainer) {
+                googleButtonContainer.innerHTML = GoogleAuthComponent.createGoogleLoginButton('Войти через Google');
+            }
+        });
+    </script>
+    <script src="auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История результатов - Telegram Bot</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+
+        </header>
+
+        <div class="history-sections">
+            <div class="history-section">
+                <h2>🔍 История поиска сообщений</h2>
+                <div id="searchHistory" class="history-items"></div>
+            </div>
+
+            <div class="history-section">
+                <h2>📺 История Live Stream</h2>
+                <div id="livestreamHistory" class="history-items"></div>
+            </div>
+
+            <div class="history-section">
+                <h2>⚡ История автопоиска</h2>
+                <div id="autosearchHistory" class="history-items"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        // Инициализация шапки для истории
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('📊 История результатов', 'history');
+        });
+    </script>
+
+    <script src="history.js"></script>
+
+</body>
+</html>

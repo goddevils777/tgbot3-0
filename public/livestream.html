@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream Parser - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+
+        </div>
+        
+        <div class="livestream-setup">
+            <h2>Выбор канала для мониторинга</h2>
+            
+            <div class="channel-selection">
+                <div class="channels-header">
+                    <h3>Выберите канал со стримом</h3>
+                    <span id="channelsCounter" class="groups-counter">Загрузка каналов...</span>
+                </div>
+                <div id="channelsList"></div>
+            </div>
+            
+            <div class="controls">
+                <button id="startStreamParsing" class="start-btn">Начать поиск участников</button>
+                <button id="stopStreamParsing" class="stop-btn" disabled>Остановить поиск</button>
+                <span id="streamStatus" class="status stopped">Остановлен</span>
+            </div>
+            
+            <div class="stream-info" id="streamInfo" style="display: none;">
+                <h3>Информация о стриме</h3>
+                <div id="streamDetails"></div>
+            </div>
+        </div>
+        
+        <div class="participants-results">
+            <div class="results-header">
+                <h2>Участники стрима</h2>
+                <div class="results-actions">
+                    <button id="saveLivestreamToHistory" class="btn-save-history" style="display: none;">
+                        💾 Сохранить в историю
+                    </button>
+                </div>
+            </div>
+            <div class="participants-stats">
+                <span id="totalParticipants">Всего найдено: 0</span>
+                <span id="uniqueParticipants">Уникальных: 0</span>
+            </div>
+            <div id="participantsList"></div>
+        </div>
+    </div>
+    
+
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        // Инициализация шапки для Live Stream
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('📺 Парсер участников Live Stream', 'livestream');
+        });
+    </script>
+
+    <script src="livestream.js"></script>
+
+</body>
+</html>
