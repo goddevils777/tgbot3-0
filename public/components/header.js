@@ -78,7 +78,16 @@ class HeaderComponent {
                 return;
             }
             
-            // Если нет Google, проверяем обычную авторизацию
+            // Затем проверяем Telegram авторизацию
+            const telegramResponse = await fetch('/api/telegram-user');
+            const telegramData = await telegramResponse.json();
+            
+            if (telegramData.success) {
+                this.displayUserInfo(telegramData.user, 'telegram');
+                return;
+            }
+            
+            // Если нет Google и Telegram, проверяем обычную авторизацию
             const response = await fetch('/api/user-info');
             const data = await response.json();
             
@@ -92,6 +101,7 @@ class HeaderComponent {
             this.displayGuestInfo();
         }
     }
+
 
     // Отображение информации о пользователе
     displayUserInfo(user, authType) {
@@ -108,6 +118,13 @@ class HeaderComponent {
                         <img src="${user.avatar}" alt="Avatar" class="user-avatar">
                         <span>👤 ${user.name || user.login}</span>
                         <span class="google-badge">Google</span>
+                    </div>
+                `;
+            } else if (authType === 'telegram') {
+                userHtml = `
+                    <div class="telegram-user-info">
+                        <span>👤 ${user.name || user.username || user.login}</span>
+                        <span class="telegram-badge">Telegram</span>
                     </div>
                 `;
             } else {
@@ -176,44 +193,47 @@ class HeaderComponent {
                 logoutBtn.setAttribute('data-handler-added', 'true');
                 logoutBtn.addEventListener('click', async () => {
                     try {
-                        // Сначала проверяем тип авторизации
+                        // Проверяем все типы авторизации
                         const googleResponse = await fetch('/api/google-user');
                         const googleData = await googleResponse.json();
+                        
+                        const telegramResponse = await fetch('/api/telegram-user');
+                        const telegramData = await telegramResponse.json();
                         
                         if (googleData.success) {
                             // Выход из Google аккаунта
                             const response = await fetch('/api/google-logout', {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                }
+                                headers: { 'Content-Type': 'application/json' }
                             });
-                            
                             const data = await response.json();
                             if (data.success) {
                                 window.location.href = '/login.html';
-                            } else {
-                                alert('Ошибка при выходе: ' + data.error);
+                            }
+                        } else if (telegramData.success) {
+                            // Выход из Telegram аккаунта
+                            const response = await fetch('/api/logout', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                window.location.href = '/login.html';
                             }
                         } else {
                             // Обычный выход
                             const response = await fetch('/api/logout', {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                }
+                                headers: { 'Content-Type': 'application/json' }
                             });
-                            
                             const data = await response.json();
                             if (data.success) {
                                 window.location.href = '/login.html';
-                            } else {
-                                alert('Ошибка при выходе: ' + data.error);
                             }
                         }
                     } catch (error) {
                         console.error('Ошибка выхода:', error);
-                        alert('Ошибка соединения при выходе');
+                        window.location.href = '/login.html';
                     }
                 });
                 observer.disconnect();

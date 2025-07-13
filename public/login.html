@@ -30,6 +30,13 @@
             <div class="google-auth-section">
                 <div id="googleLoginButton"></div>
             </div>
+
+            <!-- Добавить в секцию авторизации -->
+            <div class="auth-divider">
+                <span>или</span>
+            </div>
+
+            <div id="telegramLoginContainer"></div>
             
             <div class="auth-links">
                 <p>Нет аккаунта? <a href="/register.html">Зарегистрироваться</a></p>
@@ -50,6 +57,22 @@
                 googleButtonContainer.innerHTML = GoogleAuthComponent.createGoogleLoginButton('Войти через Google');
             }
         });
+    </script>
+
+    <!-- Добавить скрипты перед закрывающим </body> -->
+    <script src="components/telegramAuth.js"></script>
+    <link rel="stylesheet" href="styles/telegramAuth.css">
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Добавляем кнопку Telegram входа
+        const telegramContainer = document.getElementById('telegramLoginContainer');
+        if (telegramContainer) {
+            telegramContainer.innerHTML = TelegramAuthComponent.createTelegramLoginButton();
+        }
+        
+        // Инициализируем компонент
+        initTelegramAuth();
+    });
     </script>
     <script src="auth.js"></script>
 </body>

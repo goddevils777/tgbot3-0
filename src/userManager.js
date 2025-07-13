@@ -337,7 +337,45 @@ class UserManager {
     generateUserId() {
         return Date.now().toString() + Math.random().toString(36).substr(2, 9);
     }
+
+    // Создание пользователя через Telegram
+    createTelegramUser(telegramData) {
+        const users = this.loadUsers();
+        
+        // Проверяем не существует ли уже пользователь с таким Telegram ID
+        const existingUser = users.find(user => user.telegramId === telegramData.telegramId);
+        if (existingUser) {
+            return existingUser;
+        }
+
+        // Создаем нового пользователя
+        const newUser = {
+            id: this.generateUserId(),
+            login: telegramData.username || `user_${telegramData.telegramId}`,
+            telegramId: telegramData.telegramId,
+            username: telegramData.username,
+            firstName: telegramData.firstName,
+            lastName: telegramData.lastName,
+            name: `${telegramData.firstName || ''} ${telegramData.lastName || ''}`.trim(),
+            provider: 'telegram',
+            createdAt: new Date().toISOString(),
+            isActive: true
+        };
+
+        users.push(newUser);
+        this.saveUsers(users);
+        
+        console.log('Создан новый пользователь через Telegram:', newUser.login);
+        return newUser;
+    }
+
+    // Поиск пользователя по Telegram ID
+    findUserByTelegramId(telegramId) {
+        const users = this.loadUsers();
+        return users.find(user => user.telegramId === telegramId);
+    }
 }
+
 
 
 

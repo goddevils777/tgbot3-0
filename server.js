@@ -12,6 +12,12 @@ const session = require('express-session');
 const passport = require('passport');
 const GoogleAuthManager = require('./src/googleAuth');
 const GoogleAuthRoutes = require('./src/googleAuthRoutes');
+const TelegramAuthManager = require('./src/telegramAuth');
+const TelegramBotAuth = require('./src/telegramBot');
+
+// Инициализация Telegram авторизации
+const telegramAuthManager = new TelegramAuthManager(userManager);
+const telegramBot = new TelegramBotAuth(telegramAuthManager);
 
 // Замени инициализацию менеджеров:
 const userManager = new UserManager();
@@ -54,7 +60,8 @@ app.use('/src', express.static('src'));
 
 
 
-// Middleware для проверки пользователя (обновленный с Google OAuth)
+
+// Middleware для проверки пользователя (обновленный с Google OAuth и Telegram)
 app.use((req, res, next) => {
     let userId = null;
     
@@ -67,7 +74,7 @@ app.use((req, res, next) => {
         return next();
     }
     
-    // Затем проверяем обычную авторизацию через cookie
+    // Затем проверяем обычную авторизацию или Telegram через cookie
     const cookies = req.headers.cookie;
     if (cookies) {
         const userIdCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('userId='));
@@ -76,13 +83,16 @@ app.use((req, res, next) => {
         }
     }
     
-    // Проверяем есть ли userId и существует ли пользователь в users.json
+    // Проверяем есть ли userId и существует ли пользователь
     if (!userId || !userManager.userExists(userId)) {
         // Если нет авторизации - перенаправляем на страницу входа
         if (req.url.startsWith('/api/') && 
             req.url !== '/api/register' && 
             req.url !== '/api/login' &&
-            req.url !== '/api/google-user') {
+            req.url !== '/api/google-user' &&
+            req.url !== '/api/telegram-user' &&
+            req.url !== '/api/telegram-auth-init' &&
+            !req.url.startsWith('/api/telegram-auth-status/')) {
             return res.json({ 
                 success: false, 
                 error: 'Необходима авторизация', 
@@ -90,21 +100,20 @@ app.use((req, res, next) => {
             });
         }
         
-        // Для обычных страниц перенаправляем на login (исключая Google auth роуты)
-        if (!req.url.includes('login') && 
-            !req.url.includes('register') && 
-            !req.url.includes('auth.js') && 
-            !req.url.includes('style.css') &&
-            !req.url.startsWith('/auth/google')) {
+        // Для обычных страниц перенаправляем на login (исключая auth роуты)
+        if (!req.url.startsWith('/api/') && 
+            !req.url.startsWith('/auth/') &&
+            req.url !== '/login.html' && 
+            req.url !== '/register.html' &&
+            !req.url.includes('.css') && 
+            !req.url.includes('.js') && 
+            !req.url.includes('.ico')) {
             return res.redirect('/login.html');
         }
-        
-        req.userId = null;
-        req.userSessionsDir = null;
     } else {
-        userManager.updateLastActive(userId);
         req.userId = userId;
         req.userSessionsDir = userManager.getUserSessionsDir(userId);
+        userManager.updateLastActive(userId);
     }
     
     next();
@@ -878,6 +887,95 @@ app.post('/api/logout', (req, res) => {
         res.json({ success: true, message: 'Выход выполнен успешно' });
     } catch (error) {
         console.error('Ошибка выхода:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для инициации Telegram авторизации
+app.post('/api/telegram-auth-init', (req, res) => {
+    try {
+        const tempUserId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+        const { authUrl, authToken } = telegramAuthManager.generateAuthLink(tempUserId);
+        
+        res.json({ 
+            success: true, 
+            authUrl, 
+            authToken,
+            message: 'Перейдите по ссылке и нажмите /start в Telegram боте' 
+        });
+    } catch (error) {
+        console.error('Ошибка инициации Telegram авторизации:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для проверки статуса Telegram авторизации
+app.get('/api/telegram-auth-status/:authToken', (req, res) => {
+    try {
+        const { authToken } = req.params;
+        
+        // Сначала проверяем успешную авторизацию
+        const authResult = telegramAuthManager.getAuthResult(authToken);
+        if (authResult.success) {
+            // Устанавливаем cookie с userId
+            res.cookie('userId', authResult.userId, { 
+                maxAge: 30 * 24 * 60 * 60 * 1000, // 30 дней
+                httpOnly: false 
+            });
+            
+            return res.json({ 
+                success: true, 
+                completed: true, 
+                message: 'Авторизация завершена успешно' 
+            });
+        }
+        
+        // Если нет успешной авторизации, проверяем статус ожидания
+        const result = telegramAuthManager.checkAuthStatus(authToken);
+        res.json(result);
+    } catch (error) {
+        console.error('Ошибка проверки статуса авторизации:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения пользователя после Telegram авторизации  
+app.get('/api/telegram-user', (req, res) => {
+    try {
+        // Проверяем Telegram авторизацию через userId в cookie
+        const cookies = req.headers.cookie;
+        let userId = null;
+        
+        if (cookies) {
+            const userIdCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('userId='));
+            if (userIdCookie) {
+                userId = userIdCookie.split('=')[1];
+            }
+        }
+        
+        if (!userId) {
+            return res.json({ success: false, error: 'Не авторизован' });
+        }
+        
+        const user = userManager.getUserById(userId);
+        if (user && user.provider === 'telegram') {
+            res.json({ 
+                success: true, 
+                user: {
+                    id: user.id,
+                    login: user.login,
+                    name: user.name,
+                    username: user.username,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    provider: user.provider
+                }
+            });
+        } else {
+            res.json({ success: false, error: 'Telegram пользователь не найден' });
+        }
+    } catch (error) {
+        console.error('Ошибка получения Telegram пользователя:', error);
         res.json({ success: false, error: error.message });
     }
 });
