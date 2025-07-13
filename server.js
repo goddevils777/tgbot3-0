@@ -15,9 +15,7 @@ const GoogleAuthRoutes = require('./src/googleAuthRoutes');
 const TelegramAuthManager = require('./src/telegramAuth');
 const TelegramBotAuth = require('./src/telegramBot');
 
-// Инициализация Telegram авторизации
-const telegramAuthManager = new TelegramAuthManager(userManager);
-const telegramBot = new TelegramBotAuth(telegramAuthManager);
+
 
 // Замени инициализацию менеджеров:
 const userManager = new UserManager();
@@ -28,6 +26,14 @@ const userSessionManager = new UserSessionManager(); // Главный мене�
 
 const app = express();
 const PORT = 3000;
+
+// Инициализация Telegram авторизации
+const telegramAuthManager = new TelegramAuthManager(userManager);
+const telegramBot = new TelegramBotAuth(telegramAuthManager);
+
+// Инициализация Google авторизации
+const googleAuthManager = new GoogleAuthManager(userManager);
+const googleAuthRoutes = new GoogleAuthRoutes(userManager, googleAuthManager);
 
 // Настройка сессий для Google OAuth
 app.use(session({
@@ -44,9 +50,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Инициализация Google авторизации
-const googleAuthManager = new GoogleAuthManager(userManager);
-const googleAuthRoutes = new GoogleAuthRoutes(userManager, googleAuthManager);
 
 // Подключение Google роутов
 app.use(googleAuthRoutes.getRouter());
@@ -54,8 +57,6 @@ app.use(googleAuthRoutes.getRouter());
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/src', express.static('src'));
-
-
 
 
 

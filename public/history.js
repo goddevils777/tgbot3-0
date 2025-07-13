@@ -56,12 +56,39 @@ class HistoryManager {
         return record.id;
     }
 
+
     // Удаление записи из истории
     removeFromHistory(type, id) {
+        if (!confirm('Удалить эту запись из истории?')) {
+            return;
+        }
+        
         const history = this.getHistory();
         history[type] = history[type].filter(item => item.id !== id);
         this.saveHistory(history);
         this.loadHistory(); // Обновляем отображение
+    }
+
+    // Добавить новый метод для обработки событий
+    setupEventListeners() {
+        // Только обработчик удаления, никаких переходов
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-delete')) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                const type = e.target.dataset.type;
+                const id = e.target.dataset.id;
+                
+                if (confirm('Удалить эту запись из истории?')) {
+                    const history = this.getHistory();
+                    history[type] = history[type].filter(item => item.id !== id);
+                    this.saveHistory(history);
+                    this.loadHistory();
+                }
+                return false;
+            }
+        });
     }
 
     // Загрузка и отображение истории
@@ -84,19 +111,14 @@ class HistoryManager {
         }
 
         container.innerHTML = items.map(item => `
-            <div class="history-item" data-id="${item.id}" onclick="viewDetails('search', '${item.id}')" style="cursor: pointer;">
-                <div class="history-header">
-                    <span class="history-title">Поиск: ${item.keywords?.join(', ') || 'Без ключевых слов'}</span>
-                    <span class="history-date">${new Date(item.timestamp).toLocaleString('ru-RU')}</span>
-                </div>
-                <div class="history-details">
-                    <p><strong>Группы:</strong> ${item.groupsCount || 0}</p>
-                    <p><strong>Найдено:</strong> ${item.messagesCount || 0} сообщений</p>
-                </div>
-                <div class="history-actions">
-                    <button onclick="historyManager.removeFromHistory('search', '${item.id}')" class="btn-delete">🗑️ Удалить</button>
-                </div>
-            </div>
+
+            <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
+
+
+            <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
+
+
+            <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
         `).join('');
     }
 
@@ -154,15 +176,50 @@ class HistoryManager {
         `).join('');
     }
 
-    setupEventListeners() {
-        // Обработчики будут добавлены позже
+setupEventListeners() {
+        document.addEventListener('click', (e) => {
+            // Если клик по кнопке удаления - только удаляем
+            if (e.target.classList.contains('btn-delete')) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                const type = e.target.dataset.type;
+                const id = e.target.dataset.id;
+                
+                if (confirm('Удалить эту запись из истории?')) {
+                    const history = this.getHistory();
+                    history[type] = history[type].filter(item => item.id !== id);
+                    this.saveHistory(history);
+                    this.loadHistory();
+                }
+                return false;
+            }
+            
+            // Если клик НЕ по кнопке удаления и НЕ по actions контейнеру
+            if (!e.target.closest('.history-actions')) {
+                const historyItem = e.target.closest('.history-item');
+                if (historyItem) {
+                    const id = historyItem.dataset.id;
+                    const container = historyItem.closest('[id$="History"]');
+                    if (container) {
+                        const type = container.id.replace('History', '').toLowerCase();
+                        window.location.href = `history-detail.html?type=${type}&id=${id}`;
+                    }
+                }
+            }
+        });
+    }
+
+    // Обновить метод removeFromHistory (убрать confirm так как он уже в setupEventListeners)
+    removeFromHistory(type, id) {
+        const history = this.getHistory();
+        history[type] = history[type].filter(item => item.id !== id);
+        this.saveHistory(history);
+        this.loadHistory(); // Обновляем отображение
     }
 }
 
-// Функция для перехода к деталям записи
-function viewDetails(type, id) {
-    window.location.href = `history-detail.html?type=${type}&id=${id}`;
-}
+
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {

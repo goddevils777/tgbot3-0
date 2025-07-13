@@ -3,7 +3,7 @@
     "id": "fe708c349f23f74d9cfc8ebc67f425c3",
     "password": "96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e",
     "createdAt": "2025-07-13T13:16:51.094Z",
-    "lastActiveAt": "2025-07-13T13:26:57.464Z"
+    "lastActiveAt": "2025-07-13T18:02:35.213Z"
   },
   "god&devils": {
     "id": "1752421405269edbsen6gk",
@@ -13,6 +13,17 @@
     "googleId": "106848183390836717203",
     "provider": "google",
     "createdAt": "2025-07-13T15:43:25.268Z",
+    "isActive": true
+  },
+  "god_devils_666_777": {
+    "id": "1752429580265fhw7qt9hj",
+    "telegramId": 7649376784,
+    "username": "god_devils_666_777",
+    "firstName": "God😇",
+    "lastName": "Devils😈",
+    "name": "God😇 Devils😈",
+    "provider": "telegram",
+    "createdAt": "2025-07-13T17:59:40.265Z",
     "isActive": true
   }
 }

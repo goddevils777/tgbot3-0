@@ -11,14 +11,22 @@ let monitoringInterval = null;
 let channelsList, streamStatus, streamInfo, participantsList;
 
 // Сохранение состояния Live Stream
+
 function saveLiveStreamState() {
+    // Если участники очищены, не сохраняем состояние
+    if (participants.size === 0) {
+        localStorage.removeItem('liveStreamState');
+        return;
+    }
+    
     const state = {
-        selectedChannelId: selectedChannelId,
-        selectedChannelName: selectedChannelName,
-        isStreamParsing: isStreamParsing,
+        selectedChannelId,
+        selectedChannelName, 
+        isStreamParsing,
         participants: Array.from(participants.entries()),
-        timestamp: new Date().toISOString()
+        timestamp: Date.now()
     };
+    
     localStorage.setItem('liveStreamState', JSON.stringify(state));
 }
 
@@ -43,6 +51,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (saveLivestreamButton) {
         saveLivestreamButton.addEventListener('click', saveLivestreamToHistory);
     }
+    // Обработчик кнопки очистки
+    document.getElementById('clearParticipantsBtn').addEventListener('click', clearParticipants);
+    
+    // Обработчик кнопки сохранения (если его нет)
+    document.getElementById('saveLivestreamToHistory').addEventListener('click', saveLivestreamToHistory);
 });
 
 // Загрузка каналов
@@ -497,6 +510,28 @@ function loadLiveStreamState() {
 // Очистка сохраненного состояния
 function clearLiveStreamState() {
     localStorage.removeItem('liveStreamState');
+    
+    // Также очищаем переменные в памяти
+    participants.clear();
+    selectedChannelId = null;
+    selectedChannelName = null;
+    isStreamParsing = false;
+    
+    // Останавливаем все интервалы
+    if (streamParsingInterval) {
+        clearInterval(streamParsingInterval);
+        streamParsingInterval = null;
+    }
+    if (waitingInterval) {
+        clearInterval(waitingInterval);
+        waitingInterval = null;
+    }
+    if (monitoringInterval) {
+        clearInterval(monitoringInterval);
+        monitoringInterval = null;
+    }
+    
+    console.log('Состояние Live Stream полностью очищено');
 }
 
 
@@ -553,6 +588,10 @@ function displayParticipants() {
         } else {
             saveLivestreamButton.style.display = 'none';
         }
+    }
+
+    if (participants.size > 0) {
+        showActionButtons();
     }
 }
 
@@ -619,6 +658,57 @@ function saveLivestreamToHistory() {
     alert(`Участники Live Stream сохранены в историю!\nКанал: ${selectedChannelName}\nУчастников: ${participants.size}`);
     
     console.log('Участники Live Stream сохранены с ID:', savedId);
+}
+
+// Очистка результатов участников
+
+function clearParticipants() {
+    if (participants.size === 0) {
+        alert('Нет результатов для очистки');
+        return;
+    }
+    
+    if (!confirm('Очистить все найденные результаты участников?')) {
+        return;
+    }
+    
+    // Останавливаем мониторинг
+    stopStreamParsing();
+    
+    // Очищаем данные
+    participants.clear();
+    selectedChannelId = null;
+    selectedChannelName = null;
+    
+    // Обновляем отображение
+    displayParticipants();
+    
+    // Скрываем кнопки (с проверкой на существование)
+    const saveBtn = document.getElementById('saveLivestreamToHistory');
+    const clearBtn = document.getElementById('clearParticipantsBtn');
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (clearBtn) clearBtn.style.display = 'none';
+    
+    // Обновляем счетчики (с проверкой на существование)
+    const totalElement = document.getElementById('totalParticipants');
+    const uniqueElement = document.getElementById('uniqueParticipants');
+    if (totalElement) totalElement.textContent = 'Всего найдено: 0';
+    if (uniqueElement) uniqueElement.textContent = 'Уникальных: 0';
+    
+    // Скрываем информацию о стриме (с проверкой на существование)
+    const streamInfoElement = document.getElementById('streamInfo');
+    if (streamInfoElement) streamInfoElement.style.display = 'none';
+    
+    // Полностью очищаем состояние
+    clearLiveStreamState();
+    
+    console.log('Результаты участников очищены полностью');
+}
+
+// Показ кнопок действий
+function showActionButtons() {
+    document.getElementById('saveLivestreamToHistory').style.display = 'inline-block';
+    document.getElementById('clearParticipantsBtn').style.display = 'inline-block';
 }
 
 

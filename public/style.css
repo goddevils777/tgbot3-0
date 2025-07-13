@@ -2068,3 +2068,27 @@ input::placeholder {
 .nav-link-active:hover {
     background: #34495e !important;
 }
+
+.btn-clear {
+    padding: 8px 16px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-left: 10px;
+}
+
+.btn-clear:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+.btn-clear:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(231, 76, 60, 0.2);
+}
