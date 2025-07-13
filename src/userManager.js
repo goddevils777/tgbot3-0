@@ -374,6 +374,94 @@ class UserManager {
         const users = this.loadUsers();
         return users.find(user => user.telegramId === telegramId);
     }
+    // Получение всех пользователей для админа
+    getAllUsers() {
+        try {
+            const users = this.loadUsers();
+            
+            // Добавляем дополнительную информацию о каждом пользователе
+            const usersWithInfo = users.map(user => {
+                const userInfo = this.getUserInfo(user.id);
+                const userDir = path.join(this.usersDir, user.id);
+                
+                // Подсчитываем количество сессий
+                const sessionsDir = path.join(userDir, 'sessions');
+                let sessionsCount = 0;
+                if (fs.existsSync(sessionsDir)) {
+                    const sessionFiles = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.json'));
+                    sessionsCount = sessionFiles.length;
+                }
+                
+                return {
+                    ...user,
+                    lastActiveAt: userInfo ? userInfo.lastActiveAt : user.createdAt,
+                    sessionsCount,
+                    isBlocked: user.isBlocked || false
+                };
+            });
+            
+            // Сортируем по последней активности
+            usersWithInfo.sort((a, b) => new Date(b.lastActiveAt) - new Date(a.lastActiveAt));
+            
+            return usersWithInfo;
+        } catch (error) {
+            console.error('Ошибка получения списка пользователей:', error);
+            return [];
+        }
+    }
+
+    // Блокировка/разблокировка пользователя
+    toggleUserStatus(userId, action) {
+        try {
+            const users = this.loadUsers();
+            const userIndex = users.findIndex(user => user.id === userId);
+            
+            if (userIndex === -1) {
+                return { success: false, error: 'Пользователь не найден' };
+            }
+            
+            if (action === 'block') {
+                users[userIndex].isBlocked = true;
+                users[userIndex].blockedAt = new Date().toISOString();
+            } else if (action === 'unblock') {
+                users[userIndex].isBlocked = false;
+                delete users[userIndex].blockedAt;
+            } else {
+                return { success: false, error: 'Неизвестное действие' };
+            }
+            
+            this.saveUsers(users);
+            
+            console.log(`Пользователь ${userId} ${action === 'block' ? 'заблокирован' : 'разблокирован'}`);
+            return { success: true };
+        } catch (error) {
+            console.error('Ошибка изменения статуса пользователя:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Удаление пользователя (полное удаление всех данных)
+    deleteUser(userId) {
+        try {
+            // Удаляем из списка пользователей
+            const users = this.loadUsers();
+            const filteredUsers = users.filter(user => user.id !== userId);
+            this.saveUsers(filteredUsers);
+            
+            // Удаляем папку пользователя со всеми данными
+            const userDir = path.join(this.usersDir, userId);
+            if (fs.existsSync(userDir)) {
+                fs.rmSync(userDir, { recursive: true, force: true });
+            }
+            
+            console.log(`Пользователь ${userId} полностью удален`);
+            return { success: true };
+        } catch (error) {
+            console.error('Ошибка удаления пользователя:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
 }
 
 

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление пользователями - Админ панель</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 Управление пользователями</h1>
+            <div class="header-info">
+                <div id="userInfo" class="session-info">
+                    <span class="session-loading">Загрузка...</span>
+                </div>
+                <div class="admin-nav">
+                    <a href="admin.html" class="back-link">📋 Заявки</a>
+                    <a href="/" class="back-link">🏠 Главная</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-stats">
+            <div class="stat-card">
+                <span class="stat-number" id="totalUsers">0</span>
+                <span class="stat-label">Всего пользователей</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="activeUsers">0</span>
+                <span class="stat-label">Активные</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="blockedUsers">0</span>
+                <span class="stat-label">Заблокированы</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="totalSessions">0</span>
+                <span class="stat-label">Всего сессий</span>
+            </div>
+        </div>
+
+        <div class="admin-controls">
+            <div class="filters">
+                <select id="userStatusFilter">
+                    <option value="all">Все пользователи</option>
+                    <option value="active">Активные</option>
+                    <option value="blocked">Заблокированные</option>
+                    <option value="google">Google авторизация</option>
+                    <option value="telegram">Telegram авторизация</option>
+                    <option value="local">Локальная авторизация</option>
+                </select>
+                <input type="text" id="userSearchFilter" placeholder="Поиск по логину или email">
+                <button id="refreshUsersBtn" class="small-btn">Обновить</button>
+            </div>
+        </div>
+
+        <div class="users-admin-section">
+            <h2>Список пользователей</h2>
+            <div id="adminUsersList" class="admin-users-list">
+                <div class="users-loading">Загрузка пользователей...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-users.js"></script>
+</body>
+</html>

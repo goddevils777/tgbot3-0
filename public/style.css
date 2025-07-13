@@ -2092,3 +2092,258 @@ input::placeholder {
     transform: translateY(0);
     box-shadow: 0 1px 4px rgba(231, 76, 60, 0.2);
 }
+
+.delete-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-left: 8px;
+}
+
+.delete-btn:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
+}
+
+.delete-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(231, 76, 60, 0.2);
+}
+
+.admin-request-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Стили для управления пользователями */
+.admin-nav {
+    display: flex;
+    gap: 15px;
+}
+
+.back-link {
+    color: white;
+    text-decoration: none;
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.back-link:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-1px);
+}
+
+.admin-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.admin-user-item {
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.2s;
+}
+
+.admin-user-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+.admin-user-item.blocked {
+    background: #fff5f5;
+    border-color: #fed7d7;
+}
+
+.admin-user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.user-main-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-login {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.user-provider {
+    background: #f1f3f4;
+    color: #5f6368;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.user-status {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.user-status.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.user-status.blocked {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.admin-user-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.info-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.info-btn:hover {
+    background: #138496;
+    transform: translateY(-1px);
+}
+
+.block-btn {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.block-btn:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+}
+
+.unblock-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.unblock-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.delete-user-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.delete-user-btn:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.user-info-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.user-info-row span {
+    color: #5f6368;
+    font-size: 14px;
+}
+
+.user-info-row strong {
+    color: #2c3e50;
+}
+
+.users-loading {
+    text-align: center;
+    color: #7f8c8d;
+    font-style: italic;
+    padding: 40px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+    .admin-user-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .user-main-info {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    
+    .admin-user-actions {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    
+    .admin-user-actions button {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .user-info-row {
+        flex-direction: column;
+        gap: 5px;
+    }
+}

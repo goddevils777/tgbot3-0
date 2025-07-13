@@ -99,6 +99,9 @@ function displayAdminRequests(requests) {
                     <button class="process-btn" onclick="openProcessModal('${request.id}')">
                         Обработать
                     </button>
+                    <button class="delete-btn" onclick="deleteRequest('${request.id}')">
+                        🗑️ Удалить
+                    </button>
                 </div>
             </div>
             <div class="request-info">
@@ -258,5 +261,42 @@ async function createSessionForRequest() {
         } catch (error) {
             alert(`Ошибка соединения: ${error.message}`);
         }
+    }
+}
+
+// Удаление заявки администратором
+async function deleteRequest(requestId) {
+    const request = allRequests.find(r => r.id === requestId);
+    if (!request) return;
+    
+    const confirmMessage = `Удалить заявку ${requestId}?\n\n` +
+        `Пользователь: ${request.userId}\n` +
+        `Сессия: ${request.sessionName}\n` +
+        `Телефон: ${request.phoneNumber}\n\n` +
+        `${request.status === 'completed' ? 'ВНИМАНИЕ: Также будут удалены все файлы сессий пользователя!' : ''}`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/delete-request/${requestId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`Заявка ${requestId} успешно удалена!`);
+            await loadAdminRequests(); // Перезагружаем список
+        } else {
+            alert(`Ошибка удаления: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Ошибка удаления заявки:', error);
+        alert(`Ошибка соединения: ${error.message}`);
     }
 }

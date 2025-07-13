@@ -137,6 +137,27 @@ class RequestManager {
             return false;
         }
     }
+    // Удаление заявки
+    deleteRequest(requestId) {
+        try {
+            const requestFile = path.join(this.requestsDir, `${requestId}.json`);
+            
+            if (!fs.existsSync(requestFile)) {
+                return { success: false, error: 'Заявка не найдена' };
+            }
+            
+            // Удаляем файл заявки
+            fs.unlinkSync(requestFile);
+            
+            console.log(`Заявка ${requestId} удалена`);
+            return { success: true };
+        } catch (error) {
+            console.error('Ошибка удаления заявки:', error);
+            return { success: false, error: error.message };
+        }
+    }
 }
+
+
 
 module.exports = RequestManager;

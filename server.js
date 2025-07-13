@@ -29,7 +29,7 @@ const PORT = 3000;
 
 // Инициализация Telegram авторизации
 const telegramAuthManager = new TelegramAuthManager(userManager);
-const telegramBot = new TelegramBotAuth(telegramAuthManager);
+// const telegramBot = new TelegramBotAuth(telegramAuthManager);
 
 // Инициализация Google авторизации
 const googleAuthManager = new GoogleAuthManager(userManager);
@@ -743,6 +743,54 @@ app.post('/api/admin/update-request', (req, res) => {
     }
 });
 
+// API для удаления заявки администратором
+app.delete('/api/admin/delete-request/:requestId', async (req, res) => {
+    try {
+        // Проверяем админские права
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        const { requestId } = req.params;
+        
+        // Получаем информацию о заявке
+        const request = requestManager.getRequest(requestId);
+        if (!request) {
+            return res.json({ success: false, error: 'Заявка не найдена' });
+        }
+        
+        // Удаляем файлы сессий пользователя если они были созданы
+        if (request.status === 'completed') {
+            const targetUserId = request.userId;
+            const userSessionsDir = userManager.getUserSessionsDir(targetUserId);
+            
+            // Получаем SessionManager пользователя
+            const targetUserSessionManager = await userSessionManager.getUserSessionManager(targetUserId, userSessionsDir);
+            
+            // Удаляем все сессии пользователя
+            const sessions = targetUserSessionManager.getAllSessions();
+            for (const session of sessions) {
+                await targetUserSessionManager.deleteSession(session.id);
+            }
+            
+            console.log(`Удалены сессии пользователя ${targetUserId} при удалении заявки ${requestId}`);
+        }
+        
+        // Удаляем саму заявку
+        const deleteResult = requestManager.deleteRequest(requestId);
+        
+        if (deleteResult.success) {
+            res.json({ success: true, message: 'Заявка и связанные сессии удалены' });
+        } else {
+            res.json({ success: false, error: deleteResult.error });
+        }
+        
+    } catch (error) {
+        console.error('Ошибка удаления заявки администратором:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 // API для создания сессии по заявке (только для админов)
 app.post('/api/admin/create-session', async (req, res) => {
     try {
@@ -781,6 +829,82 @@ app.post('/api/admin/create-session', async (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
+
+
+// API для получения списка всех пользователей (только для админов)
+app.get('/api/admin/users', (req, res) => {
+    try {
+        // Проверяем админские права
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        const users = userManager.getAllUsers();
+        res.json({ success: true, users });
+    } catch (error) {
+        console.error('Ошибка получения списка пользователей:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для блокировки/разблокировки пользователя (только для админов)
+app.post('/api/admin/toggle-user', (req, res) => {
+    try {
+        // Проверяем админские права
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        const { userId, action } = req.body; // action: 'block' или 'unblock'
+        
+        if (!userId || !action) {
+            return res.json({ 
+                success: false, 
+                error: 'Не указан ID пользователя или действие' 
+            });
+        }
+        
+        const result = userManager.toggleUserStatus(userId, action);
+        res.json(result);
+    } catch (error) {
+        console.error('Ошибка изменения статуса пользователя:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для удаления пользователя (только для админов)
+app.delete('/api/admin/delete-user/:userId', async (req, res) => {
+    try {
+        // Проверяем админские права
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        const { userId } = req.params;
+        
+        // Проверяем что не удаляем самого себя
+        if (userId === req.userId) {
+            return res.json({ success: false, error: 'Нельзя удалить самого себя' });
+        }
+        
+        // Удаляем пользователя
+        const result = userManager.deleteUser(userId);
+        
+        if (result.success) {
+            res.json({ success: true, message: 'Пользователь успешно удален' });
+        } else {
+            res.json({ success: false, error: result.error });
+        }
+        
+    } catch (error) {
+        console.error('Ошибка удаления пользователя:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+
+
+
 
 // API для запуска автопоиска
 app.post('/api/start-autosearch', async (req, res) => {
@@ -980,6 +1104,7 @@ app.get('/api/telegram-user', (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
+
 
 
 app.listen(PORT, () => {

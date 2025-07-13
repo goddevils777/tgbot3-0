@@ -165,7 +165,8 @@ async function createRequest() {
     }
     
     // Проверяем формат номера телефона
-    if (!phoneNumber.match(/^\+?[1-9]\d{1,14}$/)) {
+    const cleanPhone = phoneNumber.replace(/\s/g, '');
+    if (!cleanPhone.match(/^\+?[1-9]\d{1,14}$/)) {
         alert('Введите корректный номер телефона');
         return;
     }
