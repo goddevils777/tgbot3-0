@@ -286,6 +286,59 @@ class UserManager {
             provider: 'both' // И локальный и Google
         });
     }
+    // Загрузка всех пользователей
+    loadUsers() {
+        const usersFile = path.join(this.usersDir, 'users.json');
+        
+        if (!fs.existsSync(usersFile)) {
+            return [];
+        }
+        
+        try {
+            const usersData = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+            
+            // Конвертируем объект в массив
+            const usersArray = [];
+            for (const login in usersData) {
+                usersArray.push({
+                    login: login,
+                    ...usersData[login]
+                });
+            }
+            
+            return usersArray;
+        } catch (error) {
+            console.error('Ошибка загрузки пользователей:', error);
+            return [];
+        }
+    }
+
+    // Сохранение пользователей
+    saveUsers(usersArray) {
+        const usersFile = path.join(this.usersDir, 'users.json');
+        
+        try {
+            // Конвертируем массив обратно в объект
+            const usersData = {};
+            usersArray.forEach(user => {
+                const login = user.login;
+                const userData = { ...user };
+                delete userData.login; // Удаляем login из данных, т.к. он станет ключом
+                usersData[login] = userData;
+            });
+            
+            fs.writeFileSync(usersFile, JSON.stringify(usersData, null, 2));
+        } catch (error) {
+            console.error('Ошибка сохранения пользователей:', error);
+        }
+    }
+
+    // Генерация ID для пользователя
+    generateUserId() {
+        return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    }
 }
+
+
 
 module.exports = UserManager;

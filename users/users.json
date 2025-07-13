@@ -1,9 +1,18 @@
 {
   "avue": {
     "id": "fe708c349f23f74d9cfc8ebc67f425c3",
-    "login": "avue",
     "password": "96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e",
     "createdAt": "2025-07-13T13:16:51.094Z",
     "lastActiveAt": "2025-07-13T13:26:57.464Z"
+  },
+  "god&devils": {
+    "id": "1752421405269edbsen6gk",
+    "email": "god.devils.666.777@gmail.com",
+    "name": "God & Devils",
+    "avatar": "https://lh3.googleusercontent.com/a/ACg8ocLYOY6mdbygW1y_wNwF_VEzheJvuPNpYTf5q-hBx7-4QjeALg=s96-c",
+    "googleId": "106848183390836717203",
+    "provider": "google",
+    "createdAt": "2025-07-13T15:43:25.268Z",
+    "isActive": true
   }
 }

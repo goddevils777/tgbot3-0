@@ -176,19 +176,40 @@ class HeaderComponent {
                 logoutBtn.setAttribute('data-handler-added', 'true');
                 logoutBtn.addEventListener('click', async () => {
                     try {
-                        const response = await fetch('/api/logout', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
+                        // Сначала проверяем тип авторизации
+                        const googleResponse = await fetch('/api/google-user');
+                        const googleData = await googleResponse.json();
+                        
+                        if (googleData.success) {
+                            // Выход из Google аккаунта
+                            const response = await fetch('/api/google-logout', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            const data = await response.json();
+                            if (data.success) {
+                                window.location.href = '/login.html';
+                            } else {
+                                alert('Ошибка при выходе: ' + data.error);
                             }
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            window.location.reload();
                         } else {
-                            alert('Ошибка при выходе: ' + data.error);
+                            // Обычный выход
+                            const response = await fetch('/api/logout', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            const data = await response.json();
+                            if (data.success) {
+                                window.location.href = '/login.html';
+                            } else {
+                                alert('Ошибка при выходе: ' + data.error);
+                            }
                         }
                     } catch (error) {
                         console.error('Ошибка выхода:', error);
