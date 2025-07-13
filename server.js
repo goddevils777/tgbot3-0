@@ -29,7 +29,7 @@ const PORT = 3000;
 
 // Инициализация Telegram авторизации
 const telegramAuthManager = new TelegramAuthManager(userManager);
-// const telegramBot = new TelegramBotAuth(telegramAuthManager);
+const telegramBot = new TelegramBotAuth(telegramAuthManager);
 
 // Инициализация Google авторизации
 const googleAuthManager = new GoogleAuthManager(userManager);
