@@ -461,7 +461,31 @@ class UserManager {
             return { success: false, error: error.message };
         }
     }
-
+    // Импорт пользователя из внешнего источника
+    importUser(userData) {
+        try {
+            // Проверяем что пользователь не существует
+            const existingUser = this.getUserById(userData.id);
+            if (existingUser) {
+                return { success: false, error: 'Пользователь уже существует' };
+            }
+            
+            const users = this.loadUsers();
+            
+            // Добавляем пользователя в массив
+            users.push(userData);
+            this.saveUsers(users);
+            
+            // Создаем папку пользователя если нужно
+            this.createUserDirectories(userData.id);
+            
+            console.log(`Пользователь ${userData.login} (${userData.id}) импортирован`);
+            return { success: true };
+        } catch (error) {
+            console.error('Ошибка импорта пользователя:', error);
+            return { success: false, error: error.message };
+        }
+    }
 }
 
 

@@ -99,6 +99,9 @@ function displayAdminRequests(requests) {
                     <button class="process-btn" onclick="openProcessModal('${request.id}')">
                         Обработать
                     </button>
+                    <button class="download-btn" onclick="downloadRequest('${request.id}')">
+                        📥 Скачать
+                    </button>
                     <button class="delete-btn" onclick="deleteRequest('${request.id}')">
                         🗑️ Удалить
                     </button>
@@ -153,6 +156,28 @@ function setupEventHandlers() {
     // Фильтры
     document.getElementById('statusFilter').addEventListener('change', applyFilters);
     document.getElementById('searchFilter').addEventListener('input', applyFilters);
+    
+    // Модальное окно
+    document.querySelector('.close').addEventListener('click', closeModal);
+    document.querySelector('.cancel-btn').addEventListener('click', closeModal);
+    
+    // Кнопки в модальном окне
+    document.getElementById('updateStatusBtn').addEventListener('click', updateRequestStatus);
+    document.getElementById('createSessionBtn').addEventListener('click', createSessionForRequest);
+    
+    // Закрытие модального окна при клике вне его
+    window.addEventListener('click', (event) => {
+        if (event.target === document.getElementById('processModal')) {
+            closeModal();
+        }
+    });
+
+        document.getElementById('refreshBtn').addEventListener('click', loadAdminRequests);
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('searchFilter').addEventListener('input', applyFilters);
+    
+    // Новый обработчик для загрузки заявки
+    document.getElementById('uploadRequestBtn').addEventListener('click', uploadRequestWithUser);
     
     // Модальное окно
     document.querySelector('.close').addEventListener('click', closeModal);
@@ -400,4 +425,81 @@ function setupEventHandlers() {
             closeModal();
         }
     });
+}
+
+// Скачать конкретную заявку с пользователем
+async function downloadRequest(requestId) {
+    try {
+        const response = await fetch(`/api/admin/export-request/${requestId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Создаем файл для скачивания
+            const blob = new Blob([JSON.stringify(data, null, 2)], { 
+                type: 'application/json' 
+            });
+            
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `request_${requestId}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            alert(`Заявка ${requestId} скачана с данными пользователя`);
+        } else {
+            alert(`Ошибка скачивания: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Ошибка скачивания заявки:', error);
+        alert(`Ошибка соединения: ${error.message}`);
+    }
+}
+
+// Загрузить заявку с пользователем
+function uploadRequestWithUser() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            
+            if (!data.request || !data.user) {
+                alert('Неверный формат файла. Нужны данные заявки и пользователя.');
+                return;
+            }
+            
+            const response = await fetch('/api/admin/import-request-with-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    request: data.request, 
+                    user: data.user 
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(result.message);
+                await loadAdminRequests(); // Перезагружаем список
+            } else {
+                alert(`Ошибка загрузки: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки:', error);
+            alert(`Ошибка обработки файла: ${error.message}`);
+        }
+    };
+    
+    input.click();
 }

@@ -2392,3 +2392,40 @@ input::placeholder {
     align-items: center;
     flex-wrap: wrap;
 }
+
+.download-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-left: 8px;
+}
+
+.download-btn:hover {
+    background: #138496;
+    transform: translateY(-1px);
+}
+
+.upload-btn {
+    background: #6f42c1;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-left: 10px;
+}
+
+.upload-btn:hover {
+    background: #5a32a3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(111, 66, 193, 0.3);
+}

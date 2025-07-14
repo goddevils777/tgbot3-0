@@ -702,6 +702,7 @@ app.get('/api/my-requests', (req, res) => {
     }
 });
 
+
 // API для админки - получение всех заявок
 app.get('/api/admin/requests', (req, res) => {
     try {
@@ -717,6 +718,7 @@ app.get('/api/admin/requests', (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
+
 
 // API для обновления статуса заявки (только для админов)
 app.post('/api/admin/update-request', (req, res) => {
@@ -902,54 +904,78 @@ app.delete('/api/admin/delete-user/:userId', async (req, res) => {
     }
 });
 
-// API для экспорта заявок (только для админа)
-app.get('/api/admin/export-requests', (req, res) => {
+// API для экспорта конкретной заявки с данными пользователя (только для админа)
+app.get('/api/admin/export-request/:requestId', (req, res) => {
     try {
         if (!requestManager.isAdminByUserId(req.userId, userManager)) {
             return res.json({ success: false, error: 'Нет доступа' });
         }
         
-        const requests = requestManager.getAllRequests();
-        res.json({ 
-            success: true, 
-            requests,
+        const { requestId } = req.params;
+        
+        // Получаем заявку
+        const request = requestManager.getRequest(requestId);
+        if (!request) {
+            return res.json({ success: false, error: 'Заявка не найдена' });
+        }
+        
+        // Получаем данные пользователя
+        const user = userManager.getUserById(request.userId);
+        if (!user) {
+            return res.json({ success: false, error: 'Пользователь не найден' });
+        }
+        
+        res.json({
+            success: true,
+            request: request,
+            user: user,
             timestamp: new Date().toISOString()
         });
+        
     } catch (error) {
-        console.error('Ошибка экспорта заявок:', error);
+        console.error('Ошибка экспорта заявки:', error);
         res.json({ success: false, error: error.message });
     }
 });
 
-// API для импорта заявок (только для админа)
-app.post('/api/admin/import-requests', (req, res) => {
+// API для импорта заявки с пользователем (только для админа)
+app.post('/api/admin/import-request-with-user', (req, res) => {
     try {
         if (!requestManager.isAdminByUserId(req.userId, userManager)) {
             return res.json({ success: false, error: 'Нет доступа' });
         }
         
-        const { requests } = req.body;
+        const { request, user } = req.body;
         
-        if (!requests || !Array.isArray(requests)) {
+        if (!request || !user) {
             return res.json({ success: false, error: 'Неверный формат данных' });
         }
         
-        // Импортируем заявки
-        let imported = 0;
-        requests.forEach(request => {
-            const result = requestManager.importRequest(request);
-            if (result.success) imported++;
-        });
+        // Импортируем пользователя
+        const userResult = userManager.importUser(user);
         
-        res.json({ 
-            success: true, 
-            message: `Импортировано заявок: ${imported}/${requests.length}`
-        });
+        // Импортируем заявку
+        const requestResult = requestManager.importRequest(request);
+        
+        if (userResult.success && requestResult.success) {
+            res.json({ 
+                success: true, 
+                message: `Импортированы: заявка ${request.id} и пользователь ${user.login}`
+            });
+        } else {
+            res.json({ 
+                success: false, 
+                error: `Ошибки: ${userResult.error || ''} ${requestResult.error || ''}`
+            });
+        }
+        
     } catch (error) {
-        console.error('Ошибка импорта заявок:', error);
+        console.error('Ошибка импорта:', error);
         res.json({ success: false, error: error.message });
     }
 });
+
+
 
 
 
