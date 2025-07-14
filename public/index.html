@@ -14,10 +14,19 @@
         
         <div class="search-section">
             <div class="keywords-container">
+                
+                <div class="input-group">
+                <label for="keywordsInput">Ключевые слова:</label>
                 <input type="text" id="searchInput" placeholder="Введите слово и нажмите пробел">
+            </div>
                 <div id="keywordsList" class="keywords-list"></div>
             </div>
-            <input type="number" id="messageCount" placeholder="Количество сообщений" value="100" min="1" max="10000">
+
+<div class="input-group">
+                <label for="messageCount">Искать в каждой группе сообщений:</label>
+               
+                <input type="number" id="messageCount" value="50" min="1" max="1000">
+            </div>
             <button id="searchBtn">Искать</button>
         </div>
         

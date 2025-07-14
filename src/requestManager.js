@@ -156,6 +156,26 @@ class RequestManager {
             return { success: false, error: error.message };
         }
     }
+    // Импорт заявки из внешнего источника
+    importRequest(requestData) {
+        try {
+            // Проверяем что заявка не существует
+            const existingRequest = this.getRequest(requestData.id);
+            if (existingRequest) {
+                return { success: false, error: 'Заявка уже существует' };
+            }
+            
+            // Создаем файл заявки
+            const requestFile = path.join(this.requestsDir, `${requestData.id}.json`);
+            fs.writeFileSync(requestFile, JSON.stringify(requestData, null, 2));
+            
+            console.log(`Заявка ${requestData.id} импортирована`);
+            return { success: true };
+        } catch (error) {
+            console.error('Ошибка импорта заявки:', error);
+            return { success: false, error: error.message };
+        }
+    }
 }
 
 

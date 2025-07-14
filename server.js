@@ -902,6 +902,55 @@ app.delete('/api/admin/delete-user/:userId', async (req, res) => {
     }
 });
 
+// API для экспорта заявок (только для админа)
+app.get('/api/admin/export-requests', (req, res) => {
+    try {
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        const requests = requestManager.getAllRequests();
+        res.json({ 
+            success: true, 
+            requests,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Ошибка экспорта заявок:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для импорта заявок (только для админа)
+app.post('/api/admin/import-requests', (req, res) => {
+    try {
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        const { requests } = req.body;
+        
+        if (!requests || !Array.isArray(requests)) {
+            return res.json({ success: false, error: 'Неверный формат данных' });
+        }
+        
+        // Импортируем заявки
+        let imported = 0;
+        requests.forEach(request => {
+            const result = requestManager.importRequest(request);
+            if (result.success) imported++;
+        });
+        
+        res.json({ 
+            success: true, 
+            message: `Импортировано заявок: ${imported}/${requests.length}`
+        });
+    } catch (error) {
+        console.error('Ошибка импорта заявок:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 
 
 
