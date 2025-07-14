@@ -316,13 +316,13 @@ async function exportRequests() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `requests_export_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `imported_requests.json`; // ИЗМЕНИЛИ ЭТУ СТРОКУ
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
             
-            alert(`Экспортировано ${data.requests.length} заявок`);
+            alert(`Экспортировано ${data.requests.length} заявок. Файл сохранен как imported_requests.json`);
         } else {
             alert(`Ошибка экспорта: ${data.error}`);
         }
