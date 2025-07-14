@@ -149,43 +149,50 @@ function closeModal() {
 }
 
 // Настройка обработчиков событий
-function setupEventHandlers() {
-    // Кнопка обновления
-    document.getElementById('refreshBtn').addEventListener('click', loadAdminRequests);
-    
-    // Фильтры
-    document.getElementById('statusFilter').addEventListener('change', applyFilters);
-    document.getElementById('searchFilter').addEventListener('input', applyFilters);
-    
-    // Модальное окно
-    document.querySelector('.close').addEventListener('click', closeModal);
-    document.querySelector('.cancel-btn').addEventListener('click', closeModal);
-    
-    // Кнопки в модальном окне
-    document.getElementById('updateStatusBtn').addEventListener('click', updateRequestStatus);
-    document.getElementById('createSessionBtn').addEventListener('click', createSessionForRequest);
-    
-    // Закрытие модального окна при клике вне его
-    window.addEventListener('click', (event) => {
-        if (event.target === document.getElementById('processModal')) {
-            closeModal();
-        }
-    });
 
-        document.getElementById('refreshBtn').addEventListener('click', loadAdminRequests);
-    document.getElementById('statusFilter').addEventListener('change', applyFilters);
-    document.getElementById('searchFilter').addEventListener('input', applyFilters);
+function setupEventHandlers() {
+    // Проверяем существование элементов перед добавлением обработчиков
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadAdminRequests);
+    }
     
-    // Новый обработчик для загрузки заявки
-    document.getElementById('uploadRequestBtn').addEventListener('click', uploadRequestWithUser);
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', applyFilters);
+    }
+    
+    const searchFilter = document.getElementById('searchFilter');
+    if (searchFilter) {
+        searchFilter.addEventListener('input', applyFilters);
+    }
+    
+    const uploadRequestBtn = document.getElementById('uploadRequestBtn');
+    if (uploadRequestBtn) {
+        uploadRequestBtn.addEventListener('click', uploadRequestWithUser);
+    }
     
     // Модальное окно
-    document.querySelector('.close').addEventListener('click', closeModal);
-    document.querySelector('.cancel-btn').addEventListener('click', closeModal);
+    const closeBtn = document.querySelector('.close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
+    
+    const cancelBtn = document.querySelector('.cancel-btn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeModal);
+    }
     
     // Кнопки в модальном окне
-    document.getElementById('updateStatusBtn').addEventListener('click', updateRequestStatus);
-    document.getElementById('createSessionBtn').addEventListener('click', createSessionForRequest);
+    const updateStatusBtn = document.getElementById('updateStatusBtn');
+    if (updateStatusBtn) {
+        updateStatusBtn.addEventListener('click', updateRequestStatus);
+    }
+    
+    const createSessionBtn = document.getElementById('createSessionBtn');
+    if (createSessionBtn) {
+        createSessionBtn.addEventListener('click', createSessionForRequest);
+    }
     
     // Закрытие модального окна при клике вне его
     window.addEventListener('click', (event) => {
@@ -400,32 +407,7 @@ function importRequests() {
     input.click();
 }
 
-// Обновить setupEventHandlers для добавления новых кнопок
-function setupEventHandlers() {
-    // Существующие обработчики...
-    document.getElementById('refreshBtn').addEventListener('click', loadAdminRequests);
-    document.getElementById('statusFilter').addEventListener('change', applyFilters);
-    document.getElementById('searchFilter').addEventListener('input', applyFilters);
-    
-    // Новые обработчики
-    document.getElementById('exportRequestsBtn').addEventListener('click', exportRequests);
-    document.getElementById('importRequestsBtn').addEventListener('click', importRequests);
-    
-    // Модальное окно
-    document.querySelector('.close').addEventListener('click', closeModal);
-    document.querySelector('.cancel-btn').addEventListener('click', closeModal);
-    
-    // Кнопки в модальном окне
-    document.getElementById('updateStatusBtn').addEventListener('click', updateRequestStatus);
-    document.getElementById('createSessionBtn').addEventListener('click', createSessionForRequest);
-    
-    // Закрытие модального окна при клике вне его
-    window.addEventListener('click', (event) => {
-        if (event.target === document.getElementById('processModal')) {
-            closeModal();
-        }
-    });
-}
+
 
 // Скачать конкретную заявку с пользователем
 async function downloadRequest(requestId) {

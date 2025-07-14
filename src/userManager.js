@@ -477,7 +477,7 @@ class UserManager {
             this.saveUsers(users);
             
             // Создаем папку пользователя если нужно
-            this.createUserDirectories(userData.id);
+            this.createUserFolder(userData.id); // ИЗМЕНИТЬ ЭТУ СТРОКУ
             
             console.log(`Пользователь ${userData.login} (${userData.id}) импортирован`);
             return { success: true };
