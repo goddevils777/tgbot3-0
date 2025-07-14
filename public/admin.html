@@ -40,19 +40,21 @@
             </div>
         </div>
 
-        <div class="admin-controls">
-            <div class="filters">
-                <select id="statusFilter">
-                    <option value="all">Все статусы</option>
-                    <option value="pending">Ожидают обработки</option>
-                    <option value="processing">В обработке</option>
-                    <option value="completed">Выполнены</option>
-                    <option value="rejected">Отклонены</option>
-                </select>
-                <input type="text" id="searchFilter" placeholder="Поиск по ID или телефону">
-                <button id="refreshBtn" class="small-btn">Обновить</button>
+            <div class="admin-controls">
+                <div class="filters">
+                    <select id="statusFilter">
+                        <option value="all">Все статусы</option>
+                        <option value="pending">Ожидают обработки</option>
+                        <option value="processing">В обработке</option>
+                        <option value="completed">Выполнены</option>
+                        <option value="rejected">Отклонены</option>
+                    </select>
+                    <input type="text" id="searchFilter" placeholder="Поиск по ID или телефону">
+                    <button id="refreshBtn" class="small-btn">Обновить</button>
+                    <button id="exportRequestsBtn" class="export-btn">📥 Скачать заявки</button>
+                    <button id="importRequestsBtn" class="import-btn">📤 Загрузить заявки</button>
+                </div>
             </div>
-        </div>
 
         <div class="requests-admin-section">
             <h2>Заявки на подключение</h2>

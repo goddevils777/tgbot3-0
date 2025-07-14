@@ -300,3 +300,104 @@ async function deleteRequest(requestId) {
         alert(`Ошибка соединения: ${error.message}`);
     }
 }
+
+// Экспорт заявок
+async function exportRequests() {
+    try {
+        const response = await fetch('/api/admin/export-requests');
+        const data = await response.json();
+        
+        if (data.success) {
+            // Создаем файл для скачивания
+            const blob = new Blob([JSON.stringify(data, null, 2)], { 
+                type: 'application/json' 
+            });
+            
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `requests_export_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            alert(`Экспортировано ${data.requests.length} заявок`);
+        } else {
+            alert(`Ошибка экспорта: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Ошибка экспорта заявок:', error);
+        alert(`Ошибка соединения: ${error.message}`);
+    }
+}
+
+// Импорт заявок
+function importRequests() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            
+            if (!data.requests || !Array.isArray(data.requests)) {
+                alert('Неверный формат файла');
+                return;
+            }
+            
+            const response = await fetch('/api/admin/import-requests', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ requests: data.requests })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(result.message);
+                await loadAdminRequests(); // Перезагружаем список
+            } else {
+                alert(`Ошибка импорта: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка импорта:', error);
+            alert(`Ошибка обработки файла: ${error.message}`);
+        }
+    };
+    
+    input.click();
+}
+
+// Обновить setupEventHandlers для добавления новых кнопок
+function setupEventHandlers() {
+    // Существующие обработчики...
+    document.getElementById('refreshBtn').addEventListener('click', loadAdminRequests);
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('searchFilter').addEventListener('input', applyFilters);
+    
+    // Новые обработчики
+    document.getElementById('exportRequestsBtn').addEventListener('click', exportRequests);
+    document.getElementById('importRequestsBtn').addEventListener('click', importRequests);
+    
+    // Модальное окно
+    document.querySelector('.close').addEventListener('click', closeModal);
+    document.querySelector('.cancel-btn').addEventListener('click', closeModal);
+    
+    // Кнопки в модальном окне
+    document.getElementById('updateStatusBtn').addEventListener('click', updateRequestStatus);
+    document.getElementById('createSessionBtn').addEventListener('click', createSessionForRequest);
+    
+    // Закрытие модального окна при клике вне его
+    window.addEventListener('click', (event) => {
+        if (event.target === document.getElementById('processModal')) {
+            closeModal();
+        }
+    });
+}
