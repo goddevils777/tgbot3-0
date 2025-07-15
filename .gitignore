@@ -15,10 +15,6 @@ yarn-error.log*
 logs
 *.log
 
-# Сессии пользователей
-user_sessions/
-sessions/
-
 # Временные файлы
 .tmp/
 tmp/

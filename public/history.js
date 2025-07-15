@@ -59,14 +59,13 @@ class HistoryManager {
 
     // Удаление записи из истории
     removeFromHistory(type, id) {
-        if (!confirm('Удалить эту запись из истории?')) {
-            return;
-        }
+        showConfirm('Удалить эту запись из истории?', () => {
         
-        const history = this.getHistory();
-        history[type] = history[type].filter(item => item.id !== id);
-        this.saveHistory(history);
-        this.loadHistory(); // Обновляем отображение
+            const history = this.getHistory();
+            history[type] = history[type].filter(item => item.id !== id);
+            this.saveHistory(history);
+            this.loadHistory(); // Обновляем отображение
+        });
     }
 
     // Добавить новый метод для обработки событий

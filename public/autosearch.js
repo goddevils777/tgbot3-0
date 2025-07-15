@@ -228,13 +228,13 @@ function updateAutoGroupsCounter() {
 // Запуск автопоиска
 async function startAutoSearch() {
     if (autoKeywords.length === 0) {
-        alert('Добавьте хотя бы одно ключевое слово');
+        notify.warning('Добавьте хотя бы одно ключевое слово');
         return;
     }
     
     const selectedGroups = getSelectedAutoGroups();
     if (selectedGroups.length === 0) {
-        alert('Выберите хотя бы одну группу');
+        notify.warning('Выберите хотя бы одну группу');
         return;
     }
     
@@ -253,13 +253,13 @@ async function startAutoSearch() {
         const data = await response.json();
         
         if (data.success) {
-            alert('Автопоиск запущен!');
+            notify.success('Автопоиск запущен!');
             await loadAutoSearchStatus();
         } else {
-            alert(`Ошибка запуска автопоиска: ${data.error}`);
+            notify.error(`Ошибка запуска автопоиска: ${data.error}`);
         }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     }
 }
 
@@ -276,13 +276,13 @@ async function stopAutoSearch() {
         const data = await response.json();
         
         if (data.success) {
-            alert('Автопоиск остановлен!');
+            notify.error('Автопоиск остановлен!');
             await loadAutoSearchStatus();
         } else {
-            alert(`Ошибка остановки автопоиска: ${data.error}`);
+            notify.error(`Ошибка остановки автопоиска: ${data.error}`);
         }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     }
 }
 
@@ -396,7 +396,7 @@ function saveAutosearchToHistory() {
     const autoResults = document.querySelectorAll('.message-item');
     
     if (autoResults.length === 0) {
-        alert('Нет результатов автопоиска для сохранения');
+        notify.warning('Нет результатов автопоиска для сохранения');
         return;
     }
     
@@ -452,7 +452,7 @@ function saveAutosearchToHistory() {
     const savedId = window.historyManager.addToHistory('autosearch', historyData);
     
     // Показываем уведомление
-    alert(`Результаты автопоиска сохранены в историю!\nКлючевые слова: ${keywords.join(', ')}\nНайдено: ${autoResults.length} сообщений`);
+    notify.success(`Результаты автопоиска сохранены в историю!\nКлючевые слова: ${keywords.join(', ')}\nНайдено: ${autoResults.length} сообщений`);
     
     console.log('Результаты автопоиска сохранены с ID:', savedId);
 }

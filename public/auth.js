@@ -7,7 +7,7 @@ if (document.getElementById('loginForm')) {
         const password = document.getElementById('password').value;
         
         if (!login || !password) {
-            alert('Заполните все поля');
+            notify.warning('Заполните все поля');
             return;
         }
         
@@ -23,13 +23,13 @@ if (document.getElementById('loginForm')) {
             const data = await response.json();
             
             if (data.success) {
-                alert('Успешный вход!');
+                notify.success('Успешный вход!');
                 window.location.href = '/sessions.html';
             } else {
-                alert('Ошибка: ' + data.error);
+                notify.error('Ошибка: ' + data.error);
             }
         } catch (error) {
-            alert('Ошибка соединения: ' + error.message);
+            notify.error('Ошибка соединения: ' + error.message);
         }
     });
 }
@@ -49,17 +49,17 @@ if (document.getElementById('registerForm')) {
         }
         
         if (password !== confirmPassword) {
-            alert('Пароли не совпадают');
+            notify.warning('Пароли не совпадают');
             return;
         }
         
         if (login.length < 3) {
-            alert('Логин должен быть не менее 3 символов');
+            notify.warning('Логин должен быть не менее 3 символов');
             return;
         }
         
         if (password.length < 6) {
-            alert('Пароль должен быть не менее 6 символов');
+            notify.warning('Пароль должен быть не менее 6 символов');
             return;
         }
         
@@ -75,13 +75,13 @@ if (document.getElementById('registerForm')) {
             const data = await response.json();
             
             if (data.success) {
-                alert('Регистрация успешна! Теперь войдите в систему.');
+                notify.success('Регистрация успешна! Теперь войдите в систему.');
                 window.location.href = '/login.html';
             } else {
-                alert('Ошибка: ' + data.error);
+                notify.error('Ошибка: ' + data.error);
             }
         } catch (error) {
-            alert('Ошибка соединения: ' + error.message);
+            notify.error('Ошибка соединения: ' + error.message);
         }
     });
 }

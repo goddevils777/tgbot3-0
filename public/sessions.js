@@ -93,31 +93,30 @@ function displayAllSessions(sessions) {
 
 // Переключение на другую сессию
 async function switchSession(sessionId) {
-    if (!confirm('Переключиться на другую сессию? Текущая сессия будет отключена.')) {
-        return;
-    }
     
-    try {
-        const response = await fetch('/api/switch-session', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ sessionId })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('Сессия успешно переключена!');
-            await loadCurrentSession();
-            await loadAllSessions();
-        } else {
-            alert(`Ошибка переключения: ${data.error}`);
+    showConfirm('Переключиться на другую сессию? Текущая сессия будет отключена.', async () => {
+        try {
+            const response = await fetch('/api/switch-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sessionId })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                notify.success('Сессия успешно переключена!');
+                await loadCurrentSession();
+                await loadAllSessions();
+            } else {
+                notify.error(`Ошибка переключения: ${data.error}`);
+            }
+        } catch (error) {
+            notify.error(`Ошибка соединения: ${error.message}`);
         }
-    } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
-    }
+    });
 }
 
 // Удаление сессии
@@ -134,13 +133,13 @@ async function deleteSession(sessionId) {
         const data = await response.json();
         
         if (data.success) {
-            alert('Сессия успешно удалена!');
+            notify.success('Сессия успешно удалена!');
             await loadAllSessions();
         } else {
-            alert(`Ошибка удаления: ${data.error}`);
+            notify.error(`Ошибка удаления: ${data.error}`);
         }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     }
 }
 
@@ -155,19 +154,19 @@ async function createRequest() {
     const phoneNumber = document.getElementById('phoneNumber').value.trim();
     
     if (!sessionName) {
-        alert('Введите название сессии');
+        notify.success('Введите название сессии');
         return;
     }
     
     if (!phoneNumber) {
-        alert('Введите номер телефона');
+        notify.success('Введите номер телефона');
         return;
     }
     
     // Проверяем формат номера телефона
     const cleanPhone = phoneNumber.replace(/\s/g, '');
     if (!cleanPhone.match(/^\+?[1-9]\d{1,14}$/)) {
-        alert('Введите корректный номер телефона');
+        notify.success('Введите корректный номер телефона');
         return;
     }
     
@@ -190,7 +189,7 @@ async function createRequest() {
         const data = await response.json();
         
         if (data.success) {
-            alert(`Заявка создана!\nВаш ID: ${data.requestId}\n\nСвяжитесь с менеджером в Telegram: @support_manager\nСообщите ваш ID: ${data.requestId}`);
+            notify.success(`Заявка создана!\nВаш ID: ${data.requestId}\n\nСвяжитесь с менеджером в Telegram: @support_manager\nСообщите ваш ID: ${data.requestId}`);
             
             // Очищаем форму
             document.getElementById('sessionName').value = '';
@@ -199,10 +198,10 @@ async function createRequest() {
             // Перезагружаем список заявок
             await loadUserRequests();
         } else {
-            alert(`Ошибка создания заявки: ${data.error}`);
+            notify.error(`Ошибка создания заявки: ${data.error}`);
         }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     } finally {
         const createBtn = document.getElementById('createRequestBtn');
         createBtn.disabled = false;
@@ -270,12 +269,12 @@ async function uploadSessionFile() {
     const sessionName = sessionNameInput.value.trim();
     
     if (!file) {
-        alert('Выберите файл сессии');
+        notify.warning('Выберите файл сессии');
         return;
     }
     
     if (!sessionName) {
-        alert('Введите название сессии');
+        notify.warning('Введите название сессии');
         return;
     }
     
@@ -296,7 +295,7 @@ async function uploadSessionFile() {
         const data = await response.json();
         
         if (data.success) {
-            alert('Сессия успешно загружена!');
+            notify.success('Сессия успешно загружена!');
             
             // Очищаем форму
             fileInput.value = '';
@@ -306,10 +305,10 @@ async function uploadSessionFile() {
             await loadCurrentSession();
             await loadAllSessions();
         } else {
-            alert(`Ошибка загрузки: ${data.error}`);
+            notify.error(`Ошибка загрузки: ${data.error}`);
         }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     } finally {
         const uploadBtn = document.getElementById('uploadSessionBtn');
         uploadBtn.disabled = false;
@@ -323,18 +322,18 @@ async function addNewSession() {
     const phoneNumber = document.getElementById('phoneNumber').value.trim();
     
     if (!sessionName) {
-        alert('Введите название сессии');
+        notify.warning('Введите название сессии');
         return;
     }
     
     if (!phoneNumber) {
-        alert('Введите номер телефона');
+        notify.warning('Введите номер телефона');
         return;
     }
     
     // Проверяем формат номера телефона
     if (!phoneNumber.match(/^\+?[1-9]\d{1,14}$/)) {
-        alert('Введите корректный номер телефона');
+        notify.warning('Введите корректный номер телефона');
         return;
     }
     
@@ -343,7 +342,7 @@ async function addNewSession() {
         addBtn.disabled = true;
         addBtn.textContent = 'Создание сессии...';
         
-        alert('Перейдите в терминал сервера для ввода SMS кода!');
+        notify.info('Перейдите в терминал сервера для ввода SMS кода!');
         
         const response = await fetch('/api/add-session', {
             method: 'POST',
@@ -359,7 +358,7 @@ async function addNewSession() {
         const data = await response.json();
         
         if (data.success) {
-            alert('Сессия успешно создана!');
+            notify.error(`Ошибка создания сессии: ${data.error}`);
             
             // Очищаем форму
             document.getElementById('sessionName').value = '';
@@ -369,10 +368,10 @@ async function addNewSession() {
             await loadCurrentSession();
             await loadAllSessions();
         } else {
-            alert(`Ошибка создания сессии: ${data.error}`);
+            notify.error(`Ошибка создания сессии: ${data.error}`);
         }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     } finally {
         const addBtn = document.getElementById('addSessionBtn');
         addBtn.disabled = false;

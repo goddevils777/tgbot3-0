@@ -17,7 +17,13 @@ class HeaderComponent {
     render() {
         const headerHTML = `
             <header class="header">
-                <h1>${this.pageTitle}</h1>
+                <div class="header-brand">
+                    <div class="logo">
+                        <span class="logo-icon">🔍</span>
+                        <span class="logo-text">TG-Finder</span>
+                    </div>
+                    <h1>${this.pageTitle}</h1>
+                </div>
                 <div class="header-info">
                     <div class="auth-section">
                         <div id="userInfo" class="session-info">

@@ -141,12 +141,12 @@ searchBtn.addEventListener('click', async () => {
     const selectedGroups = getSelectedGroups();
     
     if (keywords.length === 0) {
-        alert('Добавьте хотя бы одно ключевое слово для поиска');
+        notify.warning('Добавьте хотя бы одно ключевое слово для поиска');
         return;
     }
     
     if (selectedGroups.length === 0) {
-        alert('Выберите хотя бы одну группу');
+        notify.warning('Выберите хотя бы одну группу');
         return;
     }
 
@@ -278,7 +278,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     // Получаем текущие результаты поиска
     const currentResults = JSON.parse(localStorage.getItem('lastResults') || '[]');
     if (currentResults.length === 0) {
-        alert('Сначала выполните поиск сообщений');
+        notify.warning('Сначала выполните поиск сообщений');
         return;
     }
     
@@ -337,7 +337,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
             if (clearButton) clearButton.style.display = 'block';
         }
     } else {
-        alert(`Ошибка AI анализа: ${data.error}`);
+       notify.error(`Ошибка AI анализа: ${data.error}`);
     }
     } catch (error) {
         alert(`Ошибка соединения: ${error.message}`);

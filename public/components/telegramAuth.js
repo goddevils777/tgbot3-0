@@ -54,11 +54,11 @@ class TelegramAuthComponent {
                 this.showAuthModal(data.authUrl);
                 this.startPolling();
             } else {
-                alert('Ошибка инициации Telegram авторизации: ' + data.error);
+                notify.error('Ошибка инициации Telegram авторизации: ' + data.error);
             }
         } catch (error) {
             console.error('Ошибка Telegram авторизации:', error);
-            alert('Ошибка соединения при авторизации');
+            notify.error('Ошибка соединения при авторизации');
         }
     }
 

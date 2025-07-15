@@ -44,7 +44,7 @@ async function loadAdminRequests() {
             displayAdminRequests(allRequests);
         } else {
             if (data.error === 'Нет доступа') {
-                alert('У вас нет прав для доступа к админ панели');
+                notify.error('У вас нет прав для доступа к админ панели');
                 window.location.href = '/';
                 return;
             }
@@ -248,14 +248,14 @@ async function updateRequestStatus() {
         const data = await response.json();
         
         if (data.success) {
-            alert('Статус заявки обновлен');
+           notify.success('Статус заявки обновлен');
             closeModal();
             await loadAdminRequests();
         } else {
-            alert(`Ошибка: ${data.error}`);
+            notify.error(`Ошибка: ${data.error}`);
         }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     }
 }
 
@@ -266,7 +266,7 @@ async function createSessionForRequest() {
     const request = allRequests.find(r => r.id === currentRequestId);
     if (!request) return;
     
-    if (confirm(`Создать сессию для заявки ${request.id}?\nТелефон: ${request.phoneNumber}\nСессия: ${request.sessionName}`)) {
+    showConfirm(`Создать сессию для заявки ${request.id}?\nТелефон: ${request.phoneNumber}\nСессия: ${request.sessionName}`, async () => { // ДОБАВИТЬ async
         try {
             const response = await fetch('/api/admin/create-session', {
                 method: 'POST',
@@ -284,16 +284,16 @@ async function createSessionForRequest() {
             const data = await response.json();
             
             if (data.success) {
-                alert('Сессия создана! Проверьте терминал для ввода SMS кода.');
+                notify.success('Сессия создана! Проверьте терминал для ввода SMS кода.');
                 closeModal();
                 await loadAdminRequests();
             } else {
-                alert(`Ошибка создания сессии: ${data.error}`);
+                notify.error(`Ошибка создания сессии: ${data.error}`);
             }
         } catch (error) {
-            alert(`Ошибка соединения: ${error.message}`);
+            notify.error(`Ошибка соединения: ${error.message}`); // ИСПРАВИТЬ ЭТУ СТРОКУ
         }
-    }
+    });
 }
 
 // Удаление заявки администратором
@@ -307,30 +307,28 @@ async function deleteRequest(requestId) {
         `Телефон: ${request.phoneNumber}\n\n` +
         `${request.status === 'completed' ? 'ВНИМАНИЕ: Также будут удалены все файлы сессий пользователя!' : ''}`;
     
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/admin/delete-request/${requestId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
+    showConfirm(confirmMessage, async () => {
+        try {
+            const response = await fetch(`/api/admin/delete-request/${requestId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                notify.success(`Заявка ${requestId} успешно удалена!`);
+                await loadAdminRequests(); // Перезагружаем список
+            } else {
+                notify.error(`Ошибка удаления: ${data.error}`);
             }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert(`Заявка ${requestId} успешно удалена!`);
-            await loadAdminRequests(); // Перезагружаем список
-        } else {
-            alert(`Ошибка удаления: ${data.error}`);
+        } catch (error) {
+            console.error('Ошибка удаления заявки:', error);
+            notify.error(`Ошибка соединения: ${error.message}`); // ИСПРАВИТЬ ЭТУ СТРОКУ
         }
-    } catch (error) {
-        console.error('Ошибка удаления заявки:', error);
-        alert(`Ошибка соединения: ${error.message}`);
-    }
+    });
 }
 
 // Экспорт заявок
@@ -378,7 +376,7 @@ function importRequests() {
             const data = JSON.parse(text);
             
             if (!data.requests || !Array.isArray(data.requests)) {
-                alert('Неверный формат файла');
+                notify.error('Неверный формат файла');
                 return;
             }
             
@@ -393,7 +391,7 @@ function importRequests() {
             const result = await response.json();
             
             if (result.success) {
-                alert(result.message);
+                notify.success(result.message);
                 await loadAdminRequests(); // Перезагружаем список
             } else {
                 alert(`Ошибка импорта: ${result.error}`);
@@ -430,13 +428,13 @@ async function downloadRequest(requestId) {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
             
-            alert(`Заявка ${requestId} скачана с данными пользователя`);
+            notify.success(`Заявка ${requestId} скачана с данными пользователя`);
         } else {
-            alert(`Ошибка скачивания: ${data.error}`);
+            notify.error(`Ошибка скачивания: ${data.error}`);
         }
     } catch (error) {
         console.error('Ошибка скачивания заявки:', error);
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     }
 }
 
@@ -454,7 +452,7 @@ function uploadRequestWithUser() {
             const data = JSON.parse(text);
             
             if (!data.request || !data.user) {
-                alert('Неверный формат файла. Нужны данные заявки и пользователя.');
+                notify.error('Неверный формат файла. Нужны данные заявки и пользователя.');
                 return;
             }
             
@@ -475,11 +473,11 @@ function uploadRequestWithUser() {
                 alert(result.message);
                 await loadAdminRequests(); // Перезагружаем список
             } else {
-                alert(`Ошибка загрузки: ${result.error}`);
+                notify.error(`Ошибка загрузки: ${result.error}`);
             }
         } catch (error) {
             console.error('Ошибка загрузки:', error);
-            alert(`Ошибка обработки файла: ${error.message}`);
+            notify.error(`Ошибка обработки файла: ${error.message}`);
         }
     };
     

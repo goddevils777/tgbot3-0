@@ -42,7 +42,7 @@ async function loadAdminUsers() {
             displayAdminUsers(allUsers);
         } else {
             if (data.error === 'Нет доступа') {
-                alert('У вас нет прав для доступа к управлению пользователями');
+                notify.error('У вас нет прав для доступа к управлению пользователями');
                 window.location.href = '/';
                 return;
             }
@@ -152,31 +152,31 @@ async function toggleUserStatus(userId, action) {
     const actionText = action === 'block' ? 'заблокировать' : 'разблокировать';
     const confirmMessage = `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} пользователя "${user.login}"?`;
     
-    if (!confirm(confirmMessage)) {
-        return;
-    }
+    showConfirm(confirmMessage, async () => {
+
     
-    try {
-        const response = await fetch('/api/admin/toggle-user', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ userId, action })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert(`Пользователь "${user.login}" успешно ${action === 'block' ? 'заблокирован' : 'разблокирован'}!`);
-            await loadAdminUsers();
-        } else {
-            alert(`Ошибка: ${data.error}`);
+        try {
+            const response = await fetch('/api/admin/toggle-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ userId, action })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                notify.success(`Пользователь "${user.login}" успешно ${action === 'block' ? 'заблокирован' : 'разблокирован'}!`);
+                await loadAdminUsers();
+            } else {
+                notify.success(`Ошибка: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка изменения статуса пользователя:', error);
+            notify.success(`Ошибка соединения: ${error.message}`);
         }
-    } catch (error) {
-        console.error('Ошибка изменения статуса пользователя:', error);
-        alert(`Ошибка соединения: ${error.message}`);
-    }
+    });
 }
 
 // Удаление пользователя
@@ -206,14 +206,14 @@ async function deleteUser(userId) {
         const data = await response.json();
         
         if (data.success) {
-            alert(`Пользователь "${user.login}" успешно удален!`);
+            notify.success(`Пользователь "${user.login}" успешно удален!`);
             await loadAdminUsers();
         } else {
-            alert(`Ошибка удаления: ${data.error}`);
+            notify.success(`Ошибка удаления: ${data.error}`);
         }
     } catch (error) {
         console.error('Ошибка удаления пользователя:', error);
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.success(`Ошибка соединения: ${error.message}`);
     }
 }
 

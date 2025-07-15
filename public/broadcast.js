@@ -146,24 +146,24 @@ async function createBroadcastTask() {
     
     // Валидация
     if (!message) {
-        alert('Введите текст сообщения');
+        notify.warning('Введите текст сообщения');
         return;
     }
     
     if (selectedGroups.length === 0) {
-        alert('Выберите хотя бы одну группу');
+       notify.warning('Выберите хотя бы одну группу');
         return;
     }
     
     if (!startDate || !startTime) {
-        alert('Укажите дату и время начала');
+        notify.warning('Укажите дату и время начала');
         return;
     }
     
     // Проверяем, что время не в прошлом
     const scheduledTime = new Date(`${startDate}T${startTime}`);
     if (scheduledTime <= new Date()) {
-        alert('Время начала должно быть в будущем');
+        notify.warning('Время начала должно быть в будущем');
         return;
     }
     
@@ -194,7 +194,7 @@ async function createBroadcastTask() {
         const data = await response.json();
         
         if (data.success) {
-            alert('Задание рассылки создано успешно!');
+            notify.success('Задание рассылки создано успешно!');
             
             // Очищаем форму
             document.getElementById('broadcastMessage').value = '';
@@ -206,7 +206,7 @@ async function createBroadcastTask() {
             alert(`Ошибка создания задания: ${data.error}`);
         }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+       notify.error(`Ошибка соединения: ${error.message}`);
     }
 }
 
@@ -274,25 +274,25 @@ function getFrequencyText(frequency) {
 
 // Удаление задания рассылки
 async function deleteBroadcastTask(taskId) {
-    if (!confirm('Вы уверены, что хотите удалить это задание?')) {
-        return;
-    }
     
-    try {
-        const response = await fetch(`/api/broadcast-tasks/${taskId}`, {
-            method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            loadBroadcastTasks(); // Обновляем список
-        } else {
-            alert(`Ошибка удаления: ${data.error}`);
+    showConfirm('Вы уверены, что хотите удалить это задание?', async () => {
+    
+        try {
+            const response = await fetch(`/api/broadcast-tasks/${taskId}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadBroadcastTasks(); // Обновляем список
+            } else {
+                notify.success(`Ошибка удаления: ${data.error}`);
+            }
+        } catch (error) {
+            notify.success(`Ошибка соединения: ${error.message}`);
         }
-    } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
-    }
+    });
 }
 
 // Сохранение настроек рассылки

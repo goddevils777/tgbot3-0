@@ -98,11 +98,11 @@ class GoogleAuthComponent {
             if (data.success) {
                 window.location.reload();
             } else {
-                alert('Ошибка при выходе: ' + data.error);
+                notify.error('Ошибка при выходе: ' + data.error);
             }
         } catch (error) {
             console.error('Ошибка выхода:', error);
-            alert('Ошибка соединения при выходе');
+            notify.error('Ошибка соединения при выходе');
         }
     }
 
