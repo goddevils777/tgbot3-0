@@ -16,8 +16,11 @@ const GoogleAuthManager = require('./src/googleAuth');
 const GoogleAuthRoutes = require('./src/googleAuthRoutes');
 const TelegramAuthManager = require('./src/telegramAuth');
 const TelegramBotAuth = require('./src/telegramBot');
+const APIMonitor = require('./src/apiMonitor');
 
 
+// Инициализация мониторинга
+const apiMonitor = new APIMonitor();
 
 // Замени инициализацию менеджеров:
 const userManager = new UserManager();
@@ -61,6 +64,25 @@ app.use(express.static('public'));
 app.use('/src', express.static('src'));
 
 
+// Middleware для мониторинга API
+app.use((req, res, next) => {
+    const startTime = Date.now();
+    
+    // Перехватываем оригинальный res.json
+    const originalJson = res.json;
+    res.json = function(data) {
+        const responseTime = Date.now() - startTime;
+        const userId = req.userId || 'anonymous';
+        
+        // Логируем запрос
+        apiMonitor.logRequest(req.method, req.url, userId, responseTime, res.statusCode);
+        
+        // Вызываем оригинальный метод
+        return originalJson.call(this, data);
+    };
+    
+    next();
+});
 
 
 
@@ -1087,6 +1109,65 @@ app.post('/api/admin/push-to-github/:requestId', async (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
+
+// API для получения статистики API (только для админов)
+app.get('/api/admin/api-stats', (req, res) => {
+    try {
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        const stats = apiMonitor.getStats();
+        const topEndpoints = apiMonitor.getTopEndpoints(15);
+        
+        res.json({ 
+            success: true, 
+            stats,
+            topEndpoints,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Ошибка получения статистики API:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для сброса статистики API (только для админов)
+app.post('/api/admin/reset-api-stats', (req, res) => {
+    try {
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        apiMonitor.apiStats.clear();
+        
+        res.json({ 
+            success: true, 
+            message: 'Статистика API сброшена' 
+        });
+    } catch (error) {
+        console.error('Ошибка сброса статистики API:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для проверки прав администратора
+app.get('/api/admin/check-rights', (req, res) => {
+    try {
+        const isAdmin = requestManager.isAdminByUserId(req.userId, userManager);
+        
+        res.json({ 
+            success: true, 
+            isAdmin: isAdmin,
+            userId: req.userId 
+        });
+    } catch (error) {
+        console.error('Ошибка проверки прав:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+
 
 
 

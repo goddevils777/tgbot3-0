@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика API - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Статистика API</h1>
+            <div class="header-info">
+                <div id="userInfo" class="session-info">
+                    <span class="session-loading">Загрузка...</span>
+                </div>
+                <div class="admin-nav">
+                    <a href="admin.html" class="back-link">📋 Заявки</a>
+                    <a href="admin-users.html" class="back-link">👥 Пользователи</a>
+                    <a href="/" class="back-link">🏠 Главная</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-controls">
+            <button id="refreshStatsBtn" class="small-btn">🔄 Обновить</button>
+            <button id="resetStatsBtn" class="delete-btn">🗑️ Сбросить статистику</button>
+        </div>
+
+        <div class="api-stats-section">
+            <h2>Топ API endpoints</h2>
+            <div id="topEndpoints" class="stats-table">
+                <div class="stats-loading">Загрузка статистики...</div>
+            </div>
+        </div>
+
+        <div class="api-stats-section">
+            <h2>Детальная статистика</h2>
+            <div id="detailedStats" class="stats-table">
+                <div class="stats-loading">Загрузка статистики...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="components/notifications.js"></script>
+    <script src="admin-stats.js"></script>
+</body>
+</html>
