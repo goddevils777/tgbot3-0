@@ -119,6 +119,7 @@ class HistoryDetailManager {
     }
 
     // Отображение деталей поиска сообщений
+
     displaySearchDetails(record, contentTitle, detailData) {
         contentTitle.textContent = `Найденные сообщения (${record.messagesCount || 0})`;
         
@@ -126,6 +127,18 @@ class HistoryDetailManager {
             detailData.innerHTML = '<p class="no-data">Сообщения не сохранены</p>';
             return;
         }
+
+        // Получаем уникальные никнеймы
+        const uniqueNicknames = this.getUniqueNicknames(record.messages);
+        
+        // Добавляем кнопку копирования никнеймов
+        const copyButton = `
+            <div class="detail-actions">
+                <button onclick="copyNicknamesFromDetail()" class="copy-nicknames-btn">
+                    👥 Скопировать никнеймы (${uniqueNicknames.length})
+                </button>
+            </div>
+        `;
 
         const messagesHtml = record.messages.map((message, index) => `
             <div class="message-detail-item">
@@ -136,11 +149,14 @@ class HistoryDetailManager {
                     <span class="message-date">${message.date || 'Неизвестная дата'}</span>
                 </div>
                 <div class="message-detail-text">${message.text || 'Текст недоступен'}</div>
-                ${message.link ? `<a href="${message.link}" target="_blank" class="message-detail-link">Открыть в Telegram</a>` : ''}
+                ${message.link ? `<div class="message-link"><a href="${message.link}" target="_blank">Открыть в Telegram</a></div>` : ''}
             </div>
         `).join('');
 
-        detailData.innerHTML = messagesHtml;
+        detailData.innerHTML = copyButton + messagesHtml;
+        
+        // Сохраняем сообщения для копирования
+        window.currentMessages = record.messages;
     }
 
     // Отображение деталей Live Stream
@@ -204,6 +220,44 @@ class HistoryDetailManager {
             </div>
         `;
     }
+
+    // Получение уникальных никнеймов из сообщений
+    getUniqueNicknames(messages) {
+        const nicknames = messages
+            .map(message => message.sender)
+            .filter(sender => sender && sender !== 'Неизвестный отправитель')
+            .filter((value, index, self) => self.indexOf(value) === index); // Убираем дубликаты
+        
+        return nicknames;
+    }
+}
+
+// Глобальная функция копирования никнеймов из детального просмотра
+function copyNicknamesFromDetail() {
+    if (!window.currentMessages) {
+        notify.error('Сообщения не загружены');
+        return;
+    }
+    
+    const nicknames = window.currentMessages
+        .map(message => message.sender)
+        .filter(sender => sender && sender !== 'Неизвестный отправитель')
+        .filter((value, index, self) => self.indexOf(value) === index) // Убираем дубликаты
+        .join('\n');
+    
+    if (!nicknames) {
+        notify.warning('Никнеймы не найдены');
+        return;
+    }
+    
+    // Копируем в буфер обмена
+    navigator.clipboard.writeText(nicknames).then(() => {
+        const count = nicknames.split('\n').length;
+        notify.success(`Скопировано ${count} уникальных никнеймов`);
+    }).catch(err => {
+        console.error('Ошибка копирования:', err);
+        notify.error('Ошибка копирования в буфер обмена');
+    });
 }
 
 // Инициализация при загрузке страницы

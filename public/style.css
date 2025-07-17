@@ -270,20 +270,6 @@ input::placeholder {
     font-weight: 500;
 }
 
-.message-link {
-    color: #3498db;
-    text-decoration: none;
-    font-size: 12px;
-    padding: 2px 8px;
-    border: 1px solid #3498db;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.message-link:hover {
-    background: #3498db;
-    color: white;
-}
 
 .message-header {
     display: flex;
@@ -3763,4 +3749,163 @@ input::placeholder {
         padding: 6px 12px;
         margin-left: 10px;
     }
+}
+
+/* Стили для действий в детальном просмотре */
+.detail-actions {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.copy-nicknames-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.copy-nicknames-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.copy-nicknames-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(40, 167, 69, 0.2);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .detail-actions {
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .copy-nicknames-btn {
+        font-size: 12px;
+        padding: 8px 16px;
+        width: 100%;
+        justify-content: center;
+    }
+}
+/* Стили для детального просмотра сообщений */
+.message-detail-item {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.message-detail-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.message-number {
+    background: #007bff;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.message-group {
+    background: #28a745;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.message-sender {
+    background: #ffc107;
+    color: #212529;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.message-date {
+    color: #6c757d;
+    font-size: 12px;
+    margin-left: auto;
+}
+
+.message-detail-text {
+    color: #495057;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.message-link {
+    margin-top: 10px;
+}
+
+.message-link a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.message-link a:hover {
+    background: #007bff;
+    color: white;
+}
+
+/* Исправляем стили для кнопки копирования */
+.detail-actions {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.copy-nicknames-btn {
+    background: #28a745 !important;
+    color: white !important;
+    border: none !important;
+    padding: 10px 20px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.copy-nicknames-btn:hover {
+    background: #218838 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
 }
