@@ -1018,6 +1018,76 @@ app.post('/api/admin/import-request-with-user', (req, res) => {
 });
 
 
+// API для отправки конкретной заявки в GitHub (только для админа)
+app.post('/api/admin/push-to-github/:requestId', async (req, res) => {
+    try {
+        if (!requestManager.isAdminByUserId(req.userId, userManager)) {
+            return res.json({ success: false, error: 'Нет доступа' });
+        }
+        
+        const { requestId } = req.params;
+        const { commitMessage } = req.body;
+        
+        // Получаем данные заявки
+        const request = requestManager.getRequest(requestId);
+        if (!request) {
+            return res.json({ success: false, error: 'Заявка не найдена' });
+        }
+        
+        // Получаем данные пользователя
+        const user = userManager.getUserById(request.userId);
+        if (!user) {
+            return res.json({ success: false, error: 'Пользователь не найден' });
+        }
+        
+        // Выполняем Git команды для конкретных файлов
+        const { exec } = require('child_process');
+        const util = require('util');
+        const execAsync = util.promisify(exec);
+        
+        try {
+            // Добавляем только конкретные файлы
+            const filesToAdd = [
+                `requests/${requestId}.json`,
+                `users/users.json`,
+                `users/${request.userId}/`,
+            ];
+            
+            // Добавляем каждый файл/папку отдельно
+            for (const file of filesToAdd) {
+                try {
+                    await execAsync(`git add "${file}"`);
+                } catch (e) {
+                    console.log(`Файл ${file} не найден или уже добавлен`);
+                }
+            }
+            
+            // Делаем commit
+            const message = commitMessage || `Добавлена заявка ${requestId} пользователя ${user.login}`;
+            await execAsync(`git commit -m "${message}"`);
+            
+            // Отправляем в GitHub
+            await execAsync('git push origin main');
+            
+            res.json({ 
+                success: true, 
+                message: `Заявка ${requestId} отправлена в GitHub` 
+            });
+            
+        } catch (gitError) {
+            console.error('Ошибка Git:', gitError);
+            res.json({ 
+                success: false, 
+                error: `Ошибка Git: ${gitError.message}` 
+            });
+        }
+        
+    } catch (error) {
+        console.error('Ошибка отправки в GitHub:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 
 
 

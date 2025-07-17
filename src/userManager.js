@@ -486,7 +486,7 @@ class UserManager {
             }
             
             // Создаем/обновляем папку пользователя
-            this.createUserFolder(userData.id);
+            this.createUserDirectory(userData.id);
             
             console.log(`Пользователь ${userData.login || userData.id} успешно импортирован/обновлен`);
             return { success: true };

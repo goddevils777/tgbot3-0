@@ -105,6 +105,9 @@ function displayAdminRequests(requests) {
                     <button class="delete-btn" onclick="deleteRequest('${request.id}')">
                         🗑️ Удалить
                     </button>
+                    <button onclick="pushToGitHub('${request.id}')" class="github-btn" title="Отправить в GitHub">
+                        📤 В GitHub
+                    </button>
                 </div>
             </div>
             <div class="request-info">
@@ -394,11 +397,11 @@ function importRequests() {
                 notify.success(result.message);
                 await loadAdminRequests(); // Перезагружаем список
             } else {
-                alert(`Ошибка импорта: ${result.error}`);
+                notify.error(`Ошибка импорта: ${result.error}`);
             }
         } catch (error) {
             console.error('Ошибка импорта:', error);
-            alert(`Ошибка обработки файла: ${error.message}`);
+            notify.error(`Ошибка обработки файла: ${error.message}`);
         }
     };
     
@@ -470,7 +473,7 @@ function uploadRequestWithUser() {
             const result = await response.json();
             
             if (result.success) {
-                alert(result.message);
+                notify.success(result.message);
                 await loadAdminRequests(); // Перезагружаем список
             } else {
                 notify.error(`Ошибка загрузки: ${result.error}`);
@@ -482,4 +485,36 @@ function uploadRequestWithUser() {
     };
     
     input.click();
+}
+
+// Отправить заявку в GitHub
+async function pushToGitHub(requestId) {
+    const commitMessage = prompt('Введите сообщение для commit:', `Добавлена заявка ${requestId}`);
+    
+    if (commitMessage === null) return; // Отмена
+    
+    const confirmMessage = `Отправить заявку ${requestId} в GitHub?`;
+    
+    showConfirm(confirmMessage, async () => {
+        try {
+            const response = await fetch(`/api/admin/push-to-github/${requestId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ commitMessage })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                notify.success(data.message);
+            } else {
+                notify.error(`Ошибка отправки: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Ошибка отправки в GitHub:', error);
+            notify.error(`Ошибка соединения: ${error.message}`);
+        }
+    });
 }

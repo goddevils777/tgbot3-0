@@ -3608,3 +3608,27 @@ input::placeholder {
     border-radius: 5px;
     border-left: 4px solid #dc3545;
 }
+
+.github-btn {
+    background: #24292e;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-left: 5px;
+}
+
+.github-btn:hover {
+    background: #1b1f23;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(36, 41, 46, 0.3);
+}
+
+.github-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(36, 41, 46, 0.2);
+}
