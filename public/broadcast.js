@@ -19,9 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     startDate.value = today;
     startDate.min = today;
     
-    // Устанавливаем текущее время + 1 час
+    // Устанавливаем текущее время + 5 минут
     const now = new Date();
-    now.setHours(now.getHours() + 1);
+    now.setMinutes(now.getMinutes() + 5);
     startTime.value = now.toTimeString().slice(0, 5);
     
     // Загружаем группы
@@ -83,6 +83,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('selectAllBroadcast').addEventListener('click', selectAllBroadcastGroups);
     document.getElementById('clearBroadcastSelection').addEventListener('click', clearBroadcastSelection);
+
+    // Обработчик для добавления вариантов сообщений
+    document.getElementById('addMessageVariant').addEventListener('click', addMessageVariant);
     
 });
 
@@ -137,7 +140,7 @@ function clearBroadcastSelection() {
 
 // Создание задания рассылки
 async function createBroadcastTask() {
-    const message = document.getElementById('broadcastMessage').value.trim();
+    const messages = getAllMessageVariants();
     const selectedGroups = Array.from(document.querySelectorAll('#broadcastGroupsList input[type="checkbox"]:checked'));
     const startDate = document.getElementById('startDate').value;
     const startTime = document.getElementById('startTime').value;
@@ -145,8 +148,8 @@ async function createBroadcastTask() {
     const isRandomBroadcast = document.getElementById('randomBroadcast').checked;
     
     // Валидация
-    if (!message) {
-        notify.warning('Введите текст сообщения');
+    if (messages.length === 0) {
+        notify.warning('Введите хотя бы один вариант сообщения');
         return;
     }
     
@@ -183,7 +186,7 @@ async function createBroadcastTask() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                message: message,
+                messages: messages,
                 groups: groups,
                 startDateTime: scheduledTime.toISOString(),
                 frequency: isRandomBroadcast ? 'random24h' : frequency,
@@ -197,7 +200,16 @@ async function createBroadcastTask() {
             notify.success('Задание рассылки создано успешно!');
             
             // Очищаем форму
-            document.getElementById('broadcastMessage').value = '';
+        
+            document.querySelectorAll('.message-variant').forEach(textarea => textarea.value = '');
+            // Оставляем только первый вариант сообщения
+            const messagesContainer = document.querySelector('.messages-container');
+            const firstMessage = messagesContainer.querySelector('.message-item');
+            messagesContainer.innerHTML = '';
+            messagesContainer.appendChild(firstMessage);
+            firstMessage.querySelector('.message-variant').value = '';
+            messageVariantCount = 1;
+            updateRemoveButtons();
             clearBroadcastSelection();
             
             // Обновляем список заданий
@@ -243,7 +255,13 @@ function displayBroadcastTasks(tasks) {
                 </div>
                 <button class="delete-task" onclick="deleteBroadcastTask('${task.id}')">Удалить</button>
             </div>
-            <div class="task-message">${task.message}</div>
+            <div class="task-message">
+                ${task.messages ? 
+                    task.messages.map((msg, index) => `<div class="message-variant-display">Вариант ${index + 1}: ${msg}</div>`).join('') 
+                    : 
+                    `<div class="message-variant-display">${task.message || 'Сообщение не указано'}</div>`
+                }
+            </div>
             <div class="task-groups">Группы: ${task.groups.map(g => g.name).join(', ')}</div>
         </div>
     `).join('');
@@ -297,21 +315,33 @@ async function deleteBroadcastTask(taskId) {
 
 // Сохранение настроек рассылки
 function saveBroadcastSettings() {
-    const message = document.getElementById('broadcastMessage').value;
+    const messages = getAllMessageVariants();
     const selectedGroups = Array.from(document.querySelectorAll('#broadcastGroupsList input[type="checkbox"]:checked'))
         .map(checkbox => checkbox.value);
     
-    localStorage.setItem('broadcastMessage', message);
+    localStorage.setItem('broadcastMessages', JSON.stringify(messages));
     localStorage.setItem('broadcastSelectedGroups', JSON.stringify(selectedGroups));
 }
 
 // Загрузка настроек рассылки
 function loadBroadcastSettings() {
-    const savedMessage = localStorage.getItem('broadcastMessage');
+    const savedMessages = localStorage.getItem('broadcastMessages');
     const savedGroups = localStorage.getItem('broadcastSelectedGroups');
     
-    if (savedMessage) {
-        document.getElementById('broadcastMessage').value = savedMessage;
+    if (savedMessages) {
+        const messages = JSON.parse(savedMessages);
+        const textareas = document.querySelectorAll('.message-variant');
+        
+        // Загружаем сохраненные сообщения
+        messages.forEach((message, index) => {
+            if (index === 0 && textareas[0]) {
+                textareas[0].value = message;
+            } else if (index > 0) {
+                addMessageVariant();
+                const newTextarea = document.querySelectorAll('.message-variant')[index];
+                if (newTextarea) newTextarea.value = message;
+            }
+        });
     }
     
     if (savedGroups) {
@@ -324,7 +354,6 @@ function loadBroadcastSettings() {
         });
         updateBroadcastGroupsCounter();
         
-        // Проверяем количество выбранных групп и показываем рандомную опцию
         const selectedCount = groupIds.length;
         const randomOption = document.querySelector('.random-option');
         if (randomOption && selectedCount >= 2) {
@@ -335,13 +364,16 @@ function loadBroadcastSettings() {
 
 // Обработчики для автосохранения
 function setupAutoSave() {
-    // Сохранение при изменении текста
-    document.getElementById('broadcastMessage').addEventListener('input', saveBroadcastSettings);
+    // Сохранение при изменении текста сообщений
+    document.addEventListener('input', (e) => {
+        if (e.target.classList.contains('message-variant')) {
+            saveBroadcastSettings();
+        }
+    });
     
     // Сохранение при изменении выбора групп
     document.addEventListener('change', (e) => {
         if (e.target.type === 'checkbox' && e.target.closest('#broadcastGroupsList')) {
-            updateBroadcastGroupsCounter();
             saveBroadcastSettings();
         }
     });
@@ -372,4 +404,57 @@ async function loadSessionInfo() {
         sessionInfoDiv.innerHTML = '<span>Ошибка загрузки</span>';
         sessionInfoDiv.className = 'session-info no-session';
     }
+}
+
+// Функции для работы с вариациями сообщений
+let messageVariantCount = 1;
+
+function addMessageVariant() {
+    messageVariantCount++;
+    const container = document.querySelector('.messages-container');
+    
+    const messageItem = document.createElement('div');
+    messageItem.className = 'message-item';
+    messageItem.innerHTML = `
+        <label>Вариант сообщения ${messageVariantCount}:</label>
+        <textarea class="message-variant" placeholder="Введите вариант сообщения ${messageVariantCount}" rows="3"></textarea>
+        <button class="remove-message" onclick="removeMessage(this)">×</button>
+    `;
+    
+    container.appendChild(messageItem);
+    updateRemoveButtons();
+}
+
+function removeMessage(button) {
+    const messageItem = button.closest('.message-item');
+    messageItem.remove();
+    updateMessageLabels();
+    updateRemoveButtons();
+}
+
+function updateMessageLabels() {
+    const messageItems = document.querySelectorAll('.message-item');
+    messageItems.forEach((item, index) => {
+        const label = item.querySelector('label');
+        const textarea = item.querySelector('textarea');
+        label.textContent = `Вариант сообщения ${index + 1}:`;
+        textarea.placeholder = `Введите вариант сообщения ${index + 1}`;
+    });
+    messageVariantCount = messageItems.length;
+}
+
+function updateRemoveButtons() {
+    const removeButtons = document.querySelectorAll('.remove-message');
+    const hasMultiple = removeButtons.length > 1;
+    
+    removeButtons.forEach(button => {
+        button.style.display = hasMultiple ? 'block' : 'none';
+    });
+}
+
+function getAllMessageVariants() {
+    const textareas = document.querySelectorAll('.message-variant');
+    return Array.from(textareas)
+        .map(textarea => textarea.value.trim())
+        .filter(text => text.length > 0);
 }

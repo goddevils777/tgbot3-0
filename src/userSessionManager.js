@@ -1,6 +1,8 @@
 const SessionManager = require('./sessionManager');
 const AutoSearchManager = require('./autoSearchManager');
 const BroadcastManager = require('./broadcastManager'); // Добавь импорт
+const DirectBroadcastManager = require('./directBroadcastManager');
+const AiSniperManager = require('./aiSniperManager');
 
 class UserSessionManager {
     constructor() {
@@ -21,21 +23,58 @@ class UserSessionManager {
             
             // Создаем BroadcastManager для пользователя
             const broadcastManager = new BroadcastManager();
-            
+
+            // Создаем DirectBroadcastManager для пользователя
+            const directBroadcastManager = new DirectBroadcastManager();
+
+            // Создаем AiSniperManager для пользователя
+            const aiSniperManager = new AiSniperManager();
+
             this.userManagers.set(userId, {
                 sessionManager,
                 autoSearchManager,
-                broadcastManager // Добавь в объект
+                broadcastManager,
+                directBroadcastManager,
+                aiSniperManager
             });
         }
         
         return this.userManagers.get(userId);
     }
 
+
     // Получение BroadcastManager пользователя
     async getUserBroadcastManager(userId, userSessionsDir) {
         const managers = await this.getUserManagers(userId, userSessionsDir);
         return managers.broadcastManager;
+    }
+    
+    // Получение DirectBroadcastManager пользователя
+    async getUserDirectBroadcastManager(userId, userSessionsDir) {
+        const managers = await this.getUserManagers(userId, userSessionsDir);
+        return managers.directBroadcastManager;
+    }
+
+    // Получение AiSniperManager пользователя
+    async getUserAiSniperManager(userId, userSessionsDir) {
+        const managers = await this.getUserManagers(userId, userSessionsDir);
+        return managers.aiSniperManager;
+}
+
+    // Выполнение задания рассылки в личные сообщения
+    async executeDirectBroadcastTask(userId, userSessionsDir, taskId) {
+        try {
+            const directBroadcastManager = await this.getUserDirectBroadcastManager(userId, userSessionsDir);
+            const telegramClientAPI = await this.createUserTelegramClientAPI(userId, userSessionsDir);
+            
+            if (telegramClientAPI) {
+                await directBroadcastManager.executeTask(taskId, telegramClientAPI);
+            } else {
+                console.error(`Не удалось создать Telegram клиент для пользователя ${userId}`);
+            }
+        } catch (error) {
+            console.error(`Ошибка выполнения рассылки в личные сообщения ${taskId}:`, error);
+        }
     }
     
     // Получение SessionManager пользователя

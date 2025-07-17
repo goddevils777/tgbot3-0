@@ -271,7 +271,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     const analyzeBtn = document.getElementById('analyzeBtn');
     
     if (!aiPrompt) {
-        alert('Введите промпт для AI анализа');
+        notify.warning('Введите промпт для AI анализа');
         return;
     }
     
@@ -340,7 +340,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
        notify.error(`Ошибка AI анализа: ${data.error}`);
     }
     } catch (error) {
-        alert(`Ошибка соединения: ${error.message}`);
+        notify.error(`Ошибка соединения: ${error.message}`);
     } finally {
         analyzeBtn.disabled = false;
         analyzeBtn.textContent = 'Анализировать через AI';
@@ -539,7 +539,7 @@ function showClearButton() {
 // Функция для сохранения результатов поиска в историю
 function saveSearchToHistory() {
     if (!window.lastSearchResults || window.lastSearchResults.length === 0) {
-        alert('Нет результатов для сохранения');
+        notify.warning('Нет результатов для сохранения');
         return;
     }
     
@@ -584,7 +584,7 @@ function saveSearchToHistory() {
     const savedId = window.historyManager.addToHistory('search', historyData);
     
     // Показываем уведомление
-    alert(`Результаты поиска сохранены в историю!\nНайдено: ${window.lastSearchResults.length} сообщений`);
+    notify.success(`Результаты поиска сохранены в историю!\nНайдено: ${window.lastSearchResults.length} сообщений`);
     
     console.log('Результаты поиска сохранены с ID:', savedId);
 }

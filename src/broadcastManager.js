@@ -10,7 +10,7 @@ class BroadcastManager {
         const taskId = Date.now().toString();
         const task = {
             id: taskId,
-            message: taskData.message,
+            messages: taskData.messages,
             groups: taskData.groups,
             startDateTime: taskData.startDateTime,
             frequency: taskData.frequency,
@@ -90,7 +90,10 @@ class BroadcastManager {
     async executeNormalBroadcast(task, telegramClientAPI) {
         for (const group of task.groups) {
             try {
-                await this.sendMessage(group, task.message, telegramClientAPI);
+                // Выбираем случайное сообщение из массива
+                const randomMessage = task.messages[Math.floor(Math.random() * task.messages.length)];
+                await this.sendMessage(group, randomMessage, telegramClientAPI);
+
                 await this.delay(2000); // Задержка между сообщениями
             } catch (error) {
                 console.error(`Ошибка отправки в группу ${group.name}:`, error);
@@ -137,7 +140,9 @@ class BroadcastManager {
             
             setTimeout(async () => {
                 try {
-                    await this.sendMessage(group, task.message, telegramClientAPI);
+                    // Выбираем случайное сообщение из массива
+                    const randomMessage = task.messages[Math.floor(Math.random() * task.messages.length)];
+                    await this.sendMessage(group, randomMessage, telegramClientAPI);
                     console.log(`Рандомная отправка: сообщение отправлено в группу ${group.name}`);
                 } catch (error) {
                     console.error(`Ошибка рандомной отправки в группу ${group.name}:`, error);

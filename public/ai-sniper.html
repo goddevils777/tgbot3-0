@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Sniper - Умные ответы в чатах</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header будет добавлен через компонент -->
+        
+        <div class="ai-sniper-setup">
+            <h2>🤖 Настройка AI Chat Sniper</h2>
+            
+            <!-- Основной промпт -->
+            <div class="prompt-section">
+                <h3>Ваш профиль и специализация</h3>
+                <div class="input-group">
+                    <label for="mainPrompt">Основной промпт (ваша деятельность):</label>
+                    <textarea id="mainPrompt" placeholder="Например: Я занимаюсь разработкой сайтов и веб-приложений. Помогаю бизнесу автоматизировать процессы через качественный код." rows="4"></textarea>
+                </div>
+                
+                <div class="prompt-styles">
+                    <h4>Стиль общения</h4>
+                    <div class="style-options">
+                        <label><input type="radio" name="communicationStyle" value="friendly" checked> Дружеский</label>
+                        <label><input type="radio" name="communicationStyle" value="business"> Деловой</label>
+                        <label><input type="radio" name="communicationStyle" value="expert"> Экспертный</label>
+                        <label><input type="radio" name="communicationStyle" value="casual"> Повседневный</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Выбор чатов -->
+            <div class="chats-section">
+                <h3>Чаты для мониторинга</h3>
+                <div class="chats-header">
+                    <button id="selectAllChats" class="small-btn">Выбрать все</button>
+                    <button id="clearChatSelection" class="small-btn">Снять все</button>
+                    <span id="chatsCounter" class="chats-counter">Выбрано: 0</span>
+                </div>
+                <div id="chatsList" class="chats-list">
+                    <div class="chats-loading">Загрузка чатов...</div>
+                </div>
+            </div>
+
+            <!-- Расписание работы -->
+<div class="schedule-section">
+    <h3>⏰ Расписание работы AI Sniper</h3>
+    <div class="schedule-grid">
+        <div class="input-group">
+            <label for="startTime">Начало работы:</label>
+            <input type="time" id="startTime" value="09:00">
+        </div>
+        <div class="input-group">
+            <label for="endTime">Конец работы:</label>
+            <input type="time" id="endTime" value="22:00">
+        </div>
+    </div>
+    
+    <div class="weekdays">
+        <label>Дни недели:</label>
+        <div class="weekday-options">
+            <label><input type="checkbox" value="1" checked> Пн</label>
+            <label><input type="checkbox" value="2" checked> Вт</label>
+            <label><input type="checkbox" value="3" checked> Ср</label>
+            <label><input type="checkbox" value="4" checked> Чт</label>
+            <label><input type="checkbox" value="5" checked> Пт</label>
+            <label><input type="checkbox" value="6"> Сб</label>
+            <label><input type="checkbox" value="0"> Вс</label>
+        </div>
+    </div>
+    
+    <div class="current-time-info">
+        <small>Сейчас: <span id="currentTime"></span> | Статус: <span id="workingStatus">Проверяется...</span></small>
+    </div>
+</div>
+            
+            <!-- Кнопки управления -->
+            <div class="action-buttons">
+                <button id="startAiSniper" class="start-btn">🚀 Запустить AI Sniper</button>
+                <button id="stopAiSniper" class="stop-btn" style="display: none;">⏹️ Остановить</button>
+                <button id="testPrompt" class="test-btn">🧪 Тестировать промпт</button>
+            </div>
+        </div>
+        
+        <!-- Статус и активность -->
+        <div class="ai-status-section">
+            <h2>📊 Статус и активность</h2>
+            
+            <div class="status-cards">
+                <div class="status-card">
+                    <div class="status-indicator" id="statusIndicator">⏸️</div>
+                    <div class="status-info">
+                        <span class="status-label">Статус:</span>
+                        <span class="status-value" id="statusText">Остановлен</span>
+                    </div>
+                </div>
+                
+                <div class="status-card">
+                    <span class="status-label">Отвечено сегодня:</span>
+                    <span class="status-value" id="todayResponses">0</span>
+                </div>
+                
+                <div class="status-card">
+                    <span class="status-label">Активных чатов:</span>
+                    <span class="status-value" id="activeChats">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Лог активности -->
+        <div class="activity-log">
+            <h2>📝 Лог активности</h2>
+            <div class="log-controls">
+                <button id="clearLog" class="clear-btn">Очистить лог</button>
+                <button id="exportLog" class="export-btn">Экспорт</button>
+            </div>
+            <div id="activityLog" class="log-container">
+                <div class="log-placeholder">Активность будет отображаться здесь...</div>
+            </div>
+        </div>
+        
+        <!-- Аналитика эффективности -->
+        <div class="analytics-section">
+            <h2>📈 Аналитика эффективности</h2>
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <h4>Ответы по чатам</h4>
+                    <div id="chatStats" class="stats-list"></div>
+                </div>
+                
+                <div class="analytics-card">
+                    <h4>Время активности</h4>
+                    <div id="timeStats" class="stats-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('🤖 AI Chat Sniper', 'ai-sniper');
+        });
+    </script>
+    
+    <script src="components/notifications.js"></script>
+    <script src="ai-sniper.js"></script>
+</body>
+</html>

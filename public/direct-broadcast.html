@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рассылка в личные сообщения - Telegram Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+      
+        
+        <div class="direct-broadcast-setup">
+            <h2>Создание рассылки в личные сообщения</h2>
+            
+            <!-- Секция сообщений -->
+            <div class="message-section">
+                <h3>Варианты сообщений</h3>
+                <div class="messages-container">
+                    <div class="message-item">
+                        <label>Вариант сообщения 1:</label>
+                        <textarea class="message-variant" placeholder="Введите первый вариант сообщения" rows="3"></textarea>
+                        <button class="remove-message" onclick="removeDirectMessage(this)" style="display: none;">×</button>
+                    </div>
+                </div>
+                <button id="addDirectMessageVariant" class="small-btn">+ Добавить вариант</button>
+                <p class="variants-info">Сообщения будут отправляться в случайном порядке</p>
+            </div>
+            
+            <!-- Секция участников -->
+            <div class="participants-section">
+                <h3>Список участников</h3>
+                <div class="participants-input">
+                    <label for="participantsList">Список участников (каждый с новой строки):</label>
+                    <textarea id="participantsList" placeholder="@username1&#10;@username2&#10;+79001234567&#10;Имя Фамилия" rows="8"></textarea>
+                    <div class="participants-info">
+                        <span>Поддерживаемые форматы:</span>
+                        <ul>
+                            <li>@username - юзернейм пользователя</li>
+                            <li>+79001234567 - номер телефона</li>
+                            <li>Имя Фамилия - полное имя</li>
+                            <li>ID пользователя (числовой)</li>
+                        </ul>
+                    </div>
+                    <div class="participants-stats">
+                        <span id="participantsCount">Участников: 0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Настройки рассылки -->
+            <div class="schedule-section">
+                <h3>Настройки рассылки</h3>
+                
+                <div class="schedule-inputs">
+                    <div class="input-group">
+                        <label for="directStartDate">Дата начала:</label>
+                        <input type="date" id="directStartDate">
+                    </div>
+                    <div class="input-group">
+                        <label for="directStartTime">Время начала:</label>
+                        <input type="time" id="directStartTime">
+                    </div>
+                </div>
+                
+                <div class="limit-settings">
+                    <h4>Ограничения для безопасности</h4>
+                    <div class="limit-controls">
+                        <div class="input-group">
+                            <label for="dailyLimit">Сообщений в день (макс. 15):</label>
+                            <input type="number" id="dailyLimit" min="1" max="15" value="10">
+                        </div>
+                        <div class="calculation-info">
+                            <span id="calculationResult">Расчет интервалов появится после ввода участников</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="createDirectBroadcast" class="primary-btn">Создать рассылку</button>
+                <button id="previewCalculation" class="secondary-btn">Предпросмотр расчета</button>
+            </div>
+        </div>
+        
+        <!-- Список активных рассылок -->
+        <div class="active-broadcasts">
+            <h2>Активные рассылки в личные сообщения</h2>
+            <div id="directBroadcastsList"></div>
+        </div>
+        
+        <!-- Детальная статистика -->
+        <div class="broadcast-details" id="broadcastDetails" style="display: none;">
+            <h2>Детали рассылки</h2>
+            <div class="stats-summary">
+                <div class="stat-item">
+                    <span class="stat-label">Отправлено:</span>
+                    <span class="stat-value" id="sentCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Ошибки:</span>
+                    <span class="stat-value" id="errorCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Осталось:</span>
+                    <span class="stat-value" id="remainingCount">0</span>
+                </div>
+            </div>
+            
+            <div class="participants-lists">
+                <div class="list-section">
+                    <h4>Успешно отправлено <button class="copy-btn" onclick="copyToClipboard('sent')">Копировать</button></h4>
+                    <div class="participants-list" id="sentList"></div>
+                </div>
+                <div class="list-section">
+                    <h4>Ошибки отправки <button class="copy-btn" onclick="copyToClipboard('errors')">Копировать</button></h4>
+                    <div class="participants-list" id="errorsList"></div>
+                </div>
+                <div class="list-section">
+                    <h4>Еще не отправлено <button class="copy-btn" onclick="copyToClipboard('remaining')">Копировать</button></h4>
+                    <div class="participants-list" id="remainingList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        // Инициализация шапки для рассылки в личные сообщения
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('📨 Рассылка в личные сообщения', 'direct-broadcast');
+        });
+    </script>
+    
+    <script src="components/notifications.js"></script>
+    <script src="direct-broadcast.js"></script>
+</body>
+</html>

@@ -29,7 +29,7 @@ const PORT = 3000;
 
 // Инициализация Telegram авторизации
 const telegramAuthManager = new TelegramAuthManager(userManager);
-const telegramBot = new TelegramBotAuth(telegramAuthManager);
+// const telegramBot = new TelegramBotAuth(telegramAuthManager);
 
 // Инициализация Google авторизации
 const googleAuthManager = new GoogleAuthManager(userManager);
@@ -392,13 +392,13 @@ app.post('/api/init-autosearch', async (req, res) => {
 // API для создания задания рассылки
 app.post('/api/create-broadcast', async (req, res) => {
     try {
-        const { message, groups, startDateTime, frequency, isRandomBroadcast } = req.body;
+        const { messages, groups, startDateTime, frequency, isRandomBroadcast } = req.body;
         
         // Валидация
-        if (!message || message.trim().length === 0) {
+        if (!messages || !Array.isArray(messages) || messages.length === 0) {
             return res.json({ 
                 success: false, 
-                error: 'Введите текст сообщения' 
+                error: 'Введите хотя бы один вариант сообщения' 
             });
         }
         
@@ -430,7 +430,7 @@ app.post('/api/create-broadcast', async (req, res) => {
         
         // Создаем задание
         const task = broadcastManager.createTask({
-            message: message.trim(),
+            messages: messages,
             groups: groups,
             startDateTime: startDateTime,
             frequency: frequency || 'once',
@@ -1176,6 +1176,226 @@ app.get('/api/telegram-user', (req, res) => {
         }
     } catch (error) {
         console.error('Ошибка получения Telegram пользователя:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для создания рассылки в личные сообщения
+app.post('/api/create-direct-broadcast', async (req, res) => {
+    try {
+        const { messages, participants, startDateTime, dailyLimit } = req.body;
+        
+        // Валидация
+        if (!messages || !Array.isArray(messages) || messages.length === 0) {
+            return res.json({ 
+                success: false, 
+                error: 'Введите хотя бы один вариант сообщения' 
+            });
+        }
+        
+        if (!participants || !Array.isArray(participants) || participants.length === 0) {
+            return res.json({ 
+                success: false, 
+                error: 'Добавьте хотя бы одного участника' 
+            });
+        }
+        
+        if (!startDateTime) {
+            return res.json({ 
+                success: false, 
+                error: 'Укажите дату и время начала' 
+            });
+        }
+        
+        if (!dailyLimit || dailyLimit < 1 || dailyLimit > 15) {
+            return res.json({ 
+                success: false, 
+                error: 'Лимит сообщений должен быть от 1 до 15' 
+            });
+        }
+        
+        // Проверяем, что время в будущем
+        const scheduledTime = new Date(startDateTime);
+        if (scheduledTime <= new Date()) {
+            return res.json({ 
+                success: false, 
+                error: 'Время начала должно быть в будущем' 
+            });
+        }
+        
+        // Получаем изолированный DirectBroadcastManager пользователя
+        const directBroadcastManager = await userSessionManager.getUserDirectBroadcastManager(req.userId, req.userSessionsDir);
+        
+        // Создаем задание
+        const task = directBroadcastManager.createTask({
+            messages: messages,
+            participants: participants,
+            startDateTime: startDateTime,
+            dailyLimit: dailyLimit
+        });
+        
+        // Планируем выполнение задания
+        const executionCallback = (taskId) => {
+            userSessionManager.executeDirectBroadcastTask(req.userId, req.userSessionsDir, taskId);
+        };
+        directBroadcastManager.scheduleTask(task, executionCallback);
+        
+        res.json({ success: true, task: task });
+    } catch (error) {
+        console.error('Ошибка создания рассылки в личные сообщения:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения списка рассылок в личные сообщения
+app.get('/api/direct-broadcast-tasks', async (req, res) => {
+    try {
+        const directBroadcastManager = await userSessionManager.getUserDirectBroadcastManager(req.userId, req.userSessionsDir);
+        
+        const tasks = directBroadcastManager.getAllTasks();
+        res.json({ success: true, tasks: tasks });
+    } catch (error) {
+        console.error('Ошибка получения рассылок:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для удаления рассылки в личные сообщения
+app.delete('/api/direct-broadcast-tasks/:taskId', async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        
+        const directBroadcastManager = await userSessionManager.getUserDirectBroadcastManager(req.userId, req.userSessionsDir);
+        
+        const deleted = directBroadcastManager.deleteTask(taskId);
+        
+        if (deleted) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'Рассылка не найдена' });
+        }
+    } catch (error) {
+        console.error('Ошибка удаления рассылки:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения деталей рассылки
+app.get('/api/direct-broadcast-details/:taskId', async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        
+        const directBroadcastManager = await userSessionManager.getUserDirectBroadcastManager(req.userId, req.userSessionsDir);
+        
+        const details = directBroadcastManager.getTaskDetails(taskId);
+        
+        if (details) {
+            res.json({ success: true, details: details });
+        } else {
+            res.json({ success: false, error: 'Рассылка не найдена' });
+        }
+    } catch (error) {
+        console.error('Ошибка получения деталей рассылки:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для запуска AI Chat Sniper
+app.post('/api/start-ai-sniper', async (req, res) => {
+    try {
+        const { mainPrompt, communicationStyle, chats, schedule } = req.body;
+        
+        // Валидация
+        if (!mainPrompt || mainPrompt.trim().length === 0) {
+            return res.json({ 
+                success: false, 
+                error: 'Введите основной промпт' 
+            });
+        }
+        
+        if (!chats || chats.length === 0) {
+            return res.json({ 
+                success: false, 
+                error: 'Выберите хотя бы один чат для мониторинга' 
+            });
+        }
+        
+        // Получаем AI Sniper Manager пользователя
+        const aiSniperManager = await userSessionManager.getUserAiSniperManager(req.userId, req.userSessionsDir);
+        
+        // Создаем Telegram клиент для мониторинга
+        const telegramClientAPI = await userSessionManager.createUserTelegramClientAPI(req.userId, req.userSessionsDir);
+        
+        if (!telegramClientAPI) {
+            return res.json({ 
+                success: false, 
+                error: 'Нет активной Telegram сессии' 
+            });
+        }
+        
+        // Запускаем AI Sniper
+        const result = await aiSniperManager.startSniper(req.userId, {
+            mainPrompt: mainPrompt.trim(),
+            communicationStyle: communicationStyle,
+            chats: chats,
+            schedule: schedule
+        }, telegramClientAPI);
+        
+        res.json(result);
+        
+    } catch (error) {
+        console.error('Ошибка запуска AI Sniper:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для остановки AI Chat Sniper
+app.post('/api/stop-ai-sniper', async (req, res) => {
+    try {
+        const aiSniperManager = await userSessionManager.getUserAiSniperManager(req.userId, req.userSessionsDir);
+        
+        const result = await aiSniperManager.stopSniper(req.userId);
+        res.json(result);
+        
+    } catch (error) {
+        console.error('Ошибка остановки AI Sniper:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения статистики AI Sniper
+app.get('/api/ai-sniper-stats', async (req, res) => {
+    try {
+        const aiSniperManager = await userSessionManager.getUserAiSniperManager(req.userId, req.userSessionsDir);
+        
+        const stats = aiSniperManager.getStats(req.userId);
+        res.json({ success: true, stats: stats });
+        
+    } catch (error) {
+        console.error('Ошибка получения статистики AI Sniper:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для тестирования промпта
+app.post('/api/test-ai-prompt', async (req, res) => {
+    try {
+        const { prompt, style } = req.body;
+        
+        if (!prompt || prompt.trim().length === 0) {
+            return res.json({ 
+                success: false, 
+                error: 'Введите промпт для тестирования' 
+            });
+        }
+        
+        const aiSniperManager = await userSessionManager.getUserAiSniperManager(req.userId, req.userSessionsDir);
+        
+        const result = await aiSniperManager.testPrompt(prompt.trim(), style || 'friendly');
+        res.json(result);
+        
+    } catch (error) {
+        console.error('Ошибка тестирования промпта:', error);
         res.json({ success: false, error: error.message });
     }
 });

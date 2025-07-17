@@ -57,11 +57,13 @@ class HeaderComponent {
     // Генерация навигационных ссылок
     generateNavLinks() {
         const links = [
-            { href: 'index.html', text: 'Поиск в чатах', page: 'index' },
             { href: 'livestream.html', text: 'Live Stream', page: 'livestream' },
+            { href: 'ai-sniper.html', text: 'AI Sniper', page: 'ai-sniper' },
+            { href: 'index.html', text: 'Поиск в чатах', page: 'index' },
             { href: 'autosearch.html', text: 'Автопоиск в чатах', page: 'autosearch' },
             { href: 'broadcast.html', text: 'Рассылка в чаты', page: 'broadcast' },
-            { href: 'sessions.html', text: 'Сессии аккаунтов', page: 'sessions' },
+            { href: 'direct-broadcast.html', text: 'Рассылка в ЛС', page: 'direct-broadcast' },
+            { href: 'sessions.html', text: 'Аккаунт', page: 'sessions' },
             { href: 'history.html', text: 'История поисков', page: 'history' }
         ];
 
@@ -253,4 +255,14 @@ class HeaderComponent {
 // Функция для инициализации шапки
 function initHeader(pageTitle, currentPage = '') {
     return new HeaderComponent(pageTitle, currentPage);
+}
+
+// Глобальная функция для инициализации header
+function initHeader(pageTitle, currentPage = '') {
+    new HeaderComponent(pageTitle, currentPage);
+}
+
+// Экспорт для использования в других модулях
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { HeaderComponent, initHeader };
 }

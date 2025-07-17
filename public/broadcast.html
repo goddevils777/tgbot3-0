@@ -8,17 +8,23 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-
-        </div>
+      
         
         <div class="broadcast-setup">
             <h2>Создание новой рассылки</h2>
             
-            <div class="message-section">
-                <label for="broadcastMessage">Текст сообщения:</label>
-                <textarea id="broadcastMessage" placeholder="Введите текст сообщения для рассылки" rows="4"></textarea>
+        <div class="message-section">
+            <h3>Сообщения для рассылки</h3>
+            <div class="messages-container">
+                <div class="message-item">
+                    <label>Вариант сообщения 1:</label>
+                    <textarea class="message-variant" placeholder="Введите первый вариант сообщения" rows="3"></textarea>
+                    <button class="remove-message" onclick="removeMessage(this)" style="display: none;">×</button>
+                </div>
             </div>
+            <button id="addMessageVariant" class="small-btn">+ Добавить вариант</button>
+            <p class="variants-info">При выборе нескольких групп сообщения будут отправляться в случайном порядке</p>
+        </div>
             
             <div class="groups-section">
                 <div class="groups-header">
