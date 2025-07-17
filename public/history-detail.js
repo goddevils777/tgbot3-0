@@ -149,7 +149,7 @@ class HistoryDetailManager {
                     <span class="message-date">${message.date || 'Неизвестная дата'}</span>
                 </div>
                 <div class="message-detail-text">${message.text || 'Текст недоступен'}</div>
-                ${message.link ? `<div class="message-link"><a href="${message.link}" target="_blank">Открыть в Telegram</a></div>` : ''}
+                ${message.link ? `<div><a href="${message.link}" target="_blank" class="message-link">Открыть в Telegram</a></div>` : ''}
             </div>
         `).join('');
 

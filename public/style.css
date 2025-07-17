@@ -270,6 +270,20 @@ input::placeholder {
     font-weight: 500;
 }
 
+.message-link {
+    color: #3498db;
+    text-decoration: none;
+    font-size: 12px;
+    padding: 2px 8px;
+    border: 1px solid #3498db;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.message-link:hover {
+    background: #3498db;
+    color: white;
+}
 
 .message-header {
     display: flex;
