@@ -1,6 +1,8 @@
 // В начале файла замени импорты:
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const TelegramClient = require('./src/telegram.js');
 const TelegramClientAPI = require('./src/telegramClient');
 const AIAnalyzer = require('./src/aiAnalyzer');

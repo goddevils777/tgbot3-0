@@ -461,26 +461,36 @@ class UserManager {
             return { success: false, error: error.message };
         }
     }
-    // Импорт пользователя из внешнего источника
+    // Импорт пользователя из внешнего источника (с обновлением существующих)
     importUser(userData) {
         try {
-            // Проверяем что пользователь не существует
             const existingUser = this.getUserById(userData.id);
+            
             if (existingUser) {
-                return { success: false, error: 'Пользователь уже существует' };
+                console.log(`Обновляем существующего пользователя ${userData.id}`);
+                // Обновляем данные существующего пользователя
+                const users = this.loadUsers();
+                const userIndex = users.findIndex(user => user.id === userData.id);
+                if (userIndex !== -1) {
+                    users[userIndex] = { ...users[userIndex], ...userData, updatedAt: new Date().toISOString() };
+                    this.saveUsers(users);
+                    console.log(`Пользователь ${userData.id} обновлен`);
+                }
+            } else {
+                console.log(`Создаем нового пользователя ${userData.id}`);
+                // Создаем нового пользователя
+                const users = this.loadUsers();
+                users.push(userData);
+                this.saveUsers(users);
+                console.log(`Пользователь ${userData.id} создан`);
             }
             
-            const users = this.loadUsers();
+            // Создаем/обновляем папку пользователя
+            this.createUserFolder(userData.id);
             
-            // Добавляем пользователя в массив
-            users.push(userData);
-            this.saveUsers(users);
-            
-            // Создаем папку пользователя если нужно
-            this.createUserFolder(userData.id); // ИЗМЕНИТЬ ЭТУ СТРОКУ
-            
-            console.log(`Пользователь ${userData.login} (${userData.id}) импортирован`);
+            console.log(`Пользователь ${userData.login || userData.id} успешно импортирован/обновлен`);
             return { success: true };
+            
         } catch (error) {
             console.error('Ошибка импорта пользователя:', error);
             return { success: false, error: error.message };
