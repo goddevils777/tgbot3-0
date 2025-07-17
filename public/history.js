@@ -99,6 +99,7 @@ class HistoryManager {
         this.displayAutosearchHistory(history.autosearch);
     }
 
+
     // Отображение истории поиска
     displaySearchHistory(items) {
         const container = document.getElementById('searchHistory');
@@ -110,14 +111,20 @@ class HistoryManager {
         }
 
         container.innerHTML = items.map(item => `
-
             <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
-
-
-            <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
-
-
-            <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
+                <div class="history-header">
+                    <span class="history-title">Поиск: ${item.keywords?.join(', ') || 'Без ключевых слов'}</span>
+                    <span class="history-date">${new Date(item.timestamp).toLocaleString('ru-RU')}</span>
+                </div>
+                <div class="history-details">
+                    <p><strong>Ключевые слова:</strong> ${item.keywords?.join(', ') || 'Не указаны'}</p>
+                    <p><strong>Групп выбрано:</strong> ${item.groupsCount || 0}</p>
+                    <p><strong>Найдено сообщений:</strong> ${item.messagesCount || 0}</p>
+                </div>
+                <div class="history-actions">
+                    <button onclick="historyManager.removeFromHistory('search', '${item.id}')" class="btn-delete">🗑️ Удалить</button>
+                </div>
+            </div>
         `).join('');
     }
 
