@@ -189,7 +189,7 @@ async function createRequest() {
         const data = await response.json();
         
         if (data.success) {
-            notify.success(`Заявка создана!\nВаш ID: ${data.requestId}\n\nСвяжитесь с менеджером в Telegram: @support_manager\nСообщите ваш ID: ${data.requestId}`);
+            notify.success(data.message || `Заявка создана!\nВаш ID: ${data.requestId}\n\nСвяжитесь с менеджером в Telegram: @support_manager\nСообщите ваш ID: ${data.requestId}`);
             
             // Очищаем форму
             document.getElementById('sessionName').value = '';
@@ -378,3 +378,4 @@ async function addNewSession() {
         addBtn.textContent = 'Создать сессию';
     }
 }
+

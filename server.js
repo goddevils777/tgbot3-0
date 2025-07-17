@@ -671,7 +671,7 @@ app.get('/api/user-info', (req, res) => {
     }
 });
 
-// API для создания заявки на подключение аккаунта
+// API для создания заявки на подключение аккаунта (с автозаменой)
 app.post('/api/create-request', (req, res) => {
     try {
         const { sessionName, phoneNumber } = req.body;
@@ -683,8 +683,48 @@ app.post('/api/create-request', (req, res) => {
             });
         }
         
+        // Проверяем есть ли активная заявка от этого пользователя
+        const existingRequests = requestManager.getUserRequests(req.userId);
+        
+        if (existingRequests.length > 0) {
+            console.log(`Найдены существующие заявки для пользователя ${req.userId}, удаляем их`);
+            
+            // Удаляем все старые заявки пользователя
+            existingRequests.forEach(request => {
+                console.log(`Удаляем старую заявку: ${request.id}`);
+                requestManager.deleteRequest(request.id);
+            });
+            
+            // Очищаем старые сессии пользователя
+            console.log(`Очищаем старые сессии для пользователя ${req.userId}`);
+            const userSessionsPath = path.join('./users', req.userId, 'sessions');
+            if (fs.existsSync(userSessionsPath)) {
+                const sessionFiles = fs.readdirSync(userSessionsPath);
+                sessionFiles.forEach(file => {
+                    if (file.endsWith('.session')) {
+                        fs.unlinkSync(path.join(userSessionsPath, file));
+                        console.log(`Удален файл сессии: ${file}`);
+                    }
+                });
+            }
+        }
+        
+        // Создаем новую заявку
         const result = requestManager.createRequest(req.userId, sessionName, phoneNumber);
-        res.json(result);
+        
+        if (result.success) {
+            console.log(`Создана новая заявка для пользователя ${req.userId}: ${result.requestId}`);
+            res.json({ 
+                success: true, 
+                requestId: result.requestId,
+                message: existingRequests.length > 0 ? 
+                    'Старая заявка заменена новой. Ожидайте обработки.' : 
+                    'Заявка создана. Ожидайте обработки.'
+            });
+        } else {
+            res.json({ success: false, error: result.error });
+        }
+        
     } catch (error) {
         console.error('Ошибка создания заявки:', error);
         res.json({ success: false, error: error.message });
