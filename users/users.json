@@ -1,9 +1,14 @@
 {
   "avue": {
     "id": "175258456007452c8odnzt",
-    "login": "avue",
     "password": "96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e",
     "createdAt": "2025-07-15T13:02:40.074Z",
     "lastActiveAt": "2025-07-15T13:02:44.893Z"
+  },
+  "marki": {
+    "id": "1752750379027fdhi36u3j",
+    "password": "96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e",
+    "createdAt": "2025-07-17T11:06:19.027Z",
+    "lastActiveAt": "2025-07-17T11:15:46.828Z"
   }
 }
