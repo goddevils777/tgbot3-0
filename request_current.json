@@ -1,21 +1,20 @@
 {
   "success": true,
   "request": {
-    "id": "05EDD4245EDAC182",
-    "userId": "1752753088996i5a6hkuyr",
-    "sessionName": "1333",
+    "id": "7246A23DB5B0A7B3",
+    "userId": "17527711652884s6ylwie1",
+    "sessionName": "mirror",
     "phoneNumber": "+380 73 792 07 44",
     "status": "pending",
-    "createdAt": "2025-07-17T12:55:31.849Z",
-    "updatedAt": "2025-07-17T12:55:31.849Z"
+    "createdAt": "2025-07-17T16:53:48.111Z",
+    "updatedAt": "2025-07-17T16:53:48.111Z"
   },
   "user": {
     "login": "marki",
-    "id": "1752753088996i5a6hkuyr",
+    "id": "17527711652884s6ylwie1",
     "password": "96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e",
-    "createdAt": "2025-07-17T11:51:28.996Z",
-    "lastActiveAt": "2025-07-17T12:03:23.276Z",
-    "updatedAt": "2025-07-17T12:15:52.214Z"
+    "createdAt": "2025-07-17T16:52:45.288Z",
+    "lastActiveAt": "2025-07-17T16:53:26.533Z"
   },
-  "timestamp": "2025-07-17T12:55:51.357Z"
+  "timestamp": "2025-07-17T16:54:04.723Z"
 }

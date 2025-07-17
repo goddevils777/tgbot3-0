@@ -149,6 +149,19 @@ function updateParticipantsCalculation() {
 
 // Функция создания рассылки
 async function createDirectBroadcast() {
+
+        // Проверяем активные Telegram операции
+    try {
+        const statusResponse = await fetch('/api/telegram-status');
+        const statusData = await statusResponse.json();
+        
+        if (statusData.success && statusData.hasActiveOperation) {
+            notify.error(`⚠️ Операция "${statusData.operationType}" уже выполняется! Остановите её перед запуском рассылки в директ.`);
+            return;
+        }
+    } catch (error) {
+        console.log('Не удалось проверить статус операций');
+    }
     const messages = getAllDirectMessageVariants();
     const participants = parseParticipants();
     const startDate = document.getElementById('directStartDate').value;

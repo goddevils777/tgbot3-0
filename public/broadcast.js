@@ -140,6 +140,20 @@ function clearBroadcastSelection() {
 
 // Создание задания рассылки
 async function createBroadcastTask() {
+
+    // Проверяем активные Telegram операции
+    try {
+        const statusResponse = await fetch('/api/telegram-status');
+        const statusData = await statusResponse.json();
+        
+        if (statusData.success && statusData.hasActiveOperation) {
+            notify.error(`⚠️ Операция "${statusData.operationType}" уже выполняется! Остановите её перед запуском рассылки.`);
+            return;
+        }
+    } catch (error) {
+        console.log('Не удалось проверить статус операций');
+    }
+
     const messages = getAllMessageVariants();
     const selectedGroups = Array.from(document.querySelectorAll('#broadcastGroupsList input[type="checkbox"]:checked'));
     const startDate = document.getElementById('startDate').value;

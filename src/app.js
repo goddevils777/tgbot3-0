@@ -39,6 +39,13 @@ async function logout() {
 // Функция добавления ключевого слова
 function addKeyword(word) {
     const trimmedWord = word.trim().toLowerCase();
+    
+    // Проверяем лимит ключевых слов
+    if (keywords.length >= 10) {
+        notify.warning('Максимум 10 ключевых слов. Удалите лишние.');
+        return;
+    }
+    
     if (trimmedWord && !keywords.includes(trimmedWord)) {
         keywords.push(trimmedWord);
         updateKeywordsDisplay();
@@ -130,14 +137,39 @@ loadSettings();
 
 // Найди обработчик поиска и замени на это:
 searchBtn.addEventListener('click', async () => {
-    // Добавляем текущее слово из поля если есть
+        // Проверяем активные Telegram операции
+        try {
+            const statusResponse = await fetch('/api/telegram-status');
+            const statusData = await statusResponse.json();
+            
+            if (statusData.success && statusData.hasActiveOperation) {
+                notify.error(`⚠️ Операция "${statusData.operationType}" уже выполняется! Дождитесь завершения.`);
+                return;
+            }
+        } catch (error) {
+            console.log('Не удалось проверить статус операций');
+        }
+    
+    // Проверяем лимит ключевых слов
     const currentWord = searchInput.value.trim();
     if (currentWord) {
+        if (keywords.length >= 10) {
+            notify.warning('Максимум 10 ключевых слов. Удалите лишние.');
+            return;
+        }
         addKeyword(currentWord);
         searchInput.value = '';
     }
     
     const count = parseInt(messageCount.value) || 100;
+    
+    // Проверяем лимит сообщений
+    if (count > 10000) {
+        notify.warning('Максимум 10,000 сообщений на группу. Установлено значение 10,000.');
+        messageCount.value = 10000;
+        return;
+    }
+    
     const selectedGroups = getSelectedGroups();
     
     if (keywords.length === 0) {
@@ -150,57 +182,78 @@ searchBtn.addEventListener('click', async () => {
         return;
     }
 
+
     saveSettings();
 
+    // Показываем прогресс
     results.innerHTML = `
         <div class="loading-container">
             <div class="loader"></div>
-            <p>Ищем сообщения...</p>
+            <p id="searchProgress">Подключение к Telegram...</p>
+            <div id="progressBar" style="width: 100%; background: #f0f0f0; border-radius: 10px; margin: 10px 0;">
+                <div id="progressFill" style="width: 0%; height: 20px; background: #3498db; border-radius: 10px; transition: width 0.3s;"></div>
+            </div>
+            <p id="progressText">0/0 групп обработано</p>
         </div>
     `;
-    
-    try {
-        const response = await fetch('/api/search', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                keywords: keywords,
-                groups: selectedGroups,
-                limit: count
-            })
-        });
-        
-        const data = await response.json();
-        console.log('Ответ от сервера:', data); // Отладка
-        
-        if (data.success) {
-            // Сохраняем результаты для истории
-            window.lastSearchResults = data.messages || [];
-            
-            // Отображаем результаты
-            displayResults(data.messages, keywords[0]);
-            
-            // Показываем кнопки если есть результаты
-            const saveButton = document.getElementById('saveToHistory');
-            const clearButton = document.getElementById('clearResultsBtn');
-            
-            if (window.lastSearchResults.length > 0) {
-                if (saveButton) saveButton.style.display = 'block';
-                if (clearButton) clearButton.style.display = 'block';
-            } else {
-                if (saveButton) saveButton.style.display = 'none';
-                if (clearButton) clearButton.style.display = 'none';
-            }
-        } else {
-            results.innerHTML = `<p>Ошибка: ${data.error}</p>`;
-        }
 
-    } catch (error) {
-        console.error('Ошибка поиска:', error);
+    // Запускаем обновление прогресса
+    startProgressUpdates(selectedGroups.length);
+    
+   try {
+    // Создаем контроллер для отмены запроса с увеличенным таймаутом
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 минут
+    
+    const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            keywords: keywords,
+            groups: selectedGroups,
+            limit: count
+        }),
+        signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId); // Отменяем таймаут если запрос успешен
+    
+    const data = await response.json();
+    console.log('Ответ от сервера:', data);
+    
+    if (data.success) {
+        // Сохраняем результаты для истории
+        window.lastSearchResults = data.messages || [];
+        
+        // Отображаем результаты
+        displayResults(data.messages, keywords[0]);
+        
+        // Показываем кнопки если есть результаты
+        const saveButton = document.getElementById('saveToHistory');
+        const clearButton = document.getElementById('clearResultsBtn');
+        
+        if (window.lastSearchResults.length > 0) {
+            if (saveButton) saveButton.style.display = 'block';
+            if (clearButton) clearButton.style.display = 'block';
+        } else {
+            if (saveButton) saveButton.style.display = 'none';
+            if (clearButton) clearButton.style.display = 'none';
+        }
+    } else {
+        results.innerHTML = `<p>Ошибка: ${data.error}</p>`;
+    }
+
+} catch (error) {
+    console.error('Ошибка поиска:', error);
+    
+    if (error.name === 'AbortError') {
+        results.innerHTML = `<p>Поиск отменён по таймауту (превышено 5 минут). Попробуйте уменьшить количество групп.</p>`;
+    } else {
         results.innerHTML = `<p>Ошибка соединения: ${error.message}</p>`;
     }
+}
 });
 
 // Поиск по нажатию Enter
@@ -427,11 +480,18 @@ function displayResults(messages, keyword) {
         const date = msg && msg.date ? msg.date : 'Неизвестно';
         const link = msg && msg.link ? msg.link : '#';
         
-        // Подсветка ключевого слова
-        const highlightedText = keyword ? messageText.replace(
-            new RegExp(keyword, 'gi'),
-            `<mark>$&</mark>`
-        ) : messageText;
+        // Подсветка всех ключевых слов
+        let highlightedText = messageText;
+        if (keywords && keywords.length > 0) {
+            keywords.forEach(kw => {
+                const keywordLower = kw.toLowerCase().trim();
+                
+                // Используем ту же логику что и в поиске
+                const pattern = new RegExp(`(^|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])(${keywordLower})($|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])`, 'gi');
+                
+                highlightedText = highlightedText.replace(pattern, '$1<mark>$2</mark>$3');
+            });
+        }
         
         return `
             <div class="message-item">
@@ -628,3 +688,70 @@ document.getElementById('deselectAllBtn').addEventListener('click', () => {
     checkboxes.forEach(checkbox => checkbox.checked = false);
     updateGroupsCounter();
 });
+
+
+// Функция обновления прогресса поиска
+function startProgressUpdates(totalGroups) {
+    let currentGroup = 0;
+    const progressText = document.getElementById('progressText');
+    const progressFill = document.getElementById('progressFill');
+    const searchProgress = document.getElementById('searchProgress');
+    
+    const messages = [
+        "Подключение к Telegram...",
+        "Загрузка списка групп...", 
+        "Начинаем поиск сообщений...",
+        "Получение данных из Telegram...",
+        "Обработка сообщений...",
+        "Ожидание из-за ограничений Telegram...",
+        "Применение фильтров...",
+        "Поиск по ключевым словам...",
+        "Финализация результатов..."
+    ];
+    
+    let messageIndex = 0;
+    let fakeProgress = 0;
+    let slowdownAfter = 25; // Замедляем после 25%
+    
+    const interval = setInterval(() => {
+        // Обновляем текст сообщения
+        if (messageIndex < messages.length - 1) {
+            searchProgress.textContent = messages[messageIndex];
+            
+            // Показываем сообщение об ожидании после 25%
+            if (fakeProgress > 25 && messageIndex < 5) {
+                searchProgress.textContent = messages[5]; // "Ожидание из-за ограничений Telegram..."
+                messageIndex = 5;
+            } else if (fakeProgress <= 25) {
+                messageIndex++;
+            }
+        }
+        
+        // Замедляем прогресс после 25%
+        if (fakeProgress < slowdownAfter) {
+            fakeProgress += Math.random() * 8 + 2; // Быстрее в начале (2-10%)
+        } else if (fakeProgress < 70) {
+            fakeProgress += Math.random() * 2 + 0.5; // Медленнее в середине (0.5-2.5%)
+        } else {
+            fakeProgress += Math.random() * 0.5 + 0.1; // Очень медленно в конце (0.1-0.6%)
+        }
+        
+        // Ограничиваем максимум 85% до завершения
+        if (fakeProgress > 85) fakeProgress = 85;
+        
+        progressFill.style.width = fakeProgress + '%';
+        
+        // Более реалистичный расчет групп
+        const processedGroups = Math.floor((fakeProgress / 85) * totalGroups);
+        progressText.textContent = `Обработано: ${processedGroups}/${totalGroups} групп`;
+        
+        // Останавливаем только когда достигнут максимум
+        if (fakeProgress >= 85) {
+            searchProgress.textContent = "Завершение обработки...";
+            clearInterval(interval);
+        }
+    }, 3000); // Увеличиваем интервал до 3 секунд
+    
+    // Сохраняем интервал для очистки
+    window.searchProgressInterval = interval;
+}

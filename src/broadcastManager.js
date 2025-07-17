@@ -106,50 +106,52 @@ class BroadcastManager {
         }
     }
 
-    // Рандомная рассылка в течение 24 часов
-    async executeRandomBroadcast(task, telegramClientAPI) {
-        console.log(`Начинаем рандомную рассылку на 24 часа для ${task.groups.length} групп`);
+   // Рандомная рассылка в течение 24 часов
+async executeRandomBroadcast(task, telegramClientAPI) {
+    console.log(`Начинаем рандомную рассылку на 24 часа для ${task.groups.length} групп`);
+    
+    // НЕ меняем статус на completed здесь!
+    // Только планируем отправки
+    
+    const now = new Date();
+    const groups = [...task.groups]; // Создаем копию
+    
+    // Планируем отправки
+    groups.forEach(group => {
+        const randomDelay = Math.random() * 24 * 60 * 60 * 1000; // 0-24 часа
+        // И замени на:
+        const scheduledTime = new Date(now.getTime() + randomDelay);
+        // Корректируем на локальный часовой пояс
+        const localScheduledTime = new Date(scheduledTime.getTime() - (scheduledTime.getTimezoneOffset() * 60000));
+
+        console.log(`Группа ${group.name} запланирована на ${localScheduledTime.toLocaleString('ru-RU')}`);
         
-        // Создаем копию массива групп для перемешивания
-        const shuffledGroups = [...task.groups];
-        
-        // Перемешиваем группы
-        for (let i = shuffledGroups.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledGroups[i], shuffledGroups[j]] = [shuffledGroups[j], shuffledGroups[i]];
-        }
-        
-        // Вычисляем случайные интервалы в течение 24 часов
-        const totalDuration = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
-        const intervals = [];
-        
-        for (let i = 0; i < shuffledGroups.length; i++) {
-            intervals.push(Math.random() * totalDuration);
-        }
-        
-        // Сортируем интервалы по возрастанию
-        intervals.sort((a, b) => a - b);
-        
-        // Планируем отправку каждой группе
-        for (let i = 0; i < shuffledGroups.length; i++) {
-            const group = shuffledGroups[i];
-            const delay = intervals[i];
-            const sendTime = new Date(Date.now() + delay);
-            
-            console.log(`Группа ${group.name} запланирована на ${sendTime.toLocaleString('ru-RU')}`);
-            
-            setTimeout(async () => {
-                try {
-                    // Выбираем случайное сообщение из массива
-                    const randomMessage = task.messages[Math.floor(Math.random() * task.messages.length)];
-                    await this.sendMessage(group, randomMessage, telegramClientAPI);
-                    console.log(`Рандомная отправка: сообщение отправлено в группу ${group.name}`);
-                } catch (error) {
-                    console.error(`Ошибка рандомной отправки в группу ${group.name}:`, error);
+        setTimeout(async () => {
+            try {
+                const randomMessage = task.messages[Math.floor(Math.random() * task.messages.length)];
+                await this.sendMessage(group, randomMessage, telegramClientAPI);
+                
+                // Отмечаем группу как выполненную
+                task.completedGroups = task.completedGroups || [];
+                task.completedGroups.push(group.name);
+                
+                // Проверяем, все ли группы выполнены
+                if (task.completedGroups.length === task.groups.length) {
+                    task.status = 'completed';
+                    task.completedAt = new Date().toISOString();
+                    console.log(`Задание ${task.id} завершено`);
                 }
-            }, delay);
-        }
-    }
+                
+            } catch (error) {
+                console.error(`Ошибка отправки в группу ${group.name}:`, error);
+                task.failedGroups = task.failedGroups || [];
+                task.failedGroups.push({ group: group.name, error: error.message });
+            }
+        }, randomDelay);
+    });
+    
+    // Статус остается 'executing' до завершения всех отправок
+}
 
     // Планирование следующего выполнения
     scheduleNextRun(task) {

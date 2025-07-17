@@ -227,6 +227,12 @@ function updateAutoGroupsCounter() {
 
 // Запуск автопоиска
 async function startAutoSearch() {
+    // Проверяем, не идёт ли обычный поиск
+    if (window.searchProgressInterval) {
+        notify.warning('Дождитесь завершения обычного поиска');
+        return;
+    }
+    
     if (autoKeywords.length === 0) {
         notify.warning('Добавьте хотя бы одно ключевое слово');
         return;

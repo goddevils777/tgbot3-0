@@ -161,86 +161,129 @@ class TelegramClientAPI {
     }
 
     async searchMessages(keywords, groups, limit) {
-        
-        if (!this.isConnected) {
-            
-            return [];
-        }
+    if (!this.isConnected) {
+        console.log('❌ Клиент не подключен');
+        return [];
+    }
 
-        try {
-            const results = [];
-            
+    try {
+        const results = [];
+        let processedGroups = 0;
+        const totalGroups = groups.length;
+        
+        console.log(`🚀 Начинаем поиск в ${totalGroups} группах по ключевым словам: ${keywords.join(', ')}`);
+        
         for (const group of groups) {
+            console.log(`🔍 Поиск в группе "${group.name}" (${processedGroups + 1}/${totalGroups})`);
+            
             const groupId = parseInt(group.id);
             
-           
-            
-            // Получаем сообщения с правильным лимитом
-            const messages = await this.client.getMessages(groupId, {
-                limit: Math.max(limit * 2, 200) // Получаем в 2 раза больше или минимум 200
-            });
+            try {
+                // Получаем сообщения с правильным лимитом
+                const messages = await this.client.getMessages(groupId, {
+                    limit: Math.max(limit * 2, 200)
+                });
 
-
-            
-            let foundInGroup = 0;
-            for (const message of messages) {
-                // Пропускаем служебные сообщения
-                if (message.className === 'MessageService') {
-                    continue;
-                }
+                console.log(`📨 Получено ${messages.length} сообщений из группы "${group.name}"`);
                 
-                // Получаем текст сообщения
-                let messageText = '';
-                if (message.message) {
-                    messageText = message.message;
-                } else if (message.text) {
-                    messageText = message.text;
-                } else if (message.caption) {
-                    messageText = message.caption;
-                }
+                let foundInGroup = 0;
+                for (const message of messages) {
+                    // Пропускаем служебные сообщения
+                    if (message.className === 'MessageService') {
+                        continue;
+                    }
+                    
+                    // Получаем текст сообщения
+                    let messageText = '';
+                    if (message.message) {
+                        messageText = message.message;
+                    } else if (message.text) {
+                        messageText = message.text;
+                    } else if (message.caption) {
+                        messageText = message.caption;
+                    }
 
-                if (!messageText) continue;
+                    if (!messageText) continue;
 
-                // Проверяем наличие ключевых слов
-                const lowerMessageText = messageText.toLowerCase();
-                const containsKeyword = keywords.some(keyword => 
-                    lowerMessageText.includes(keyword.toLowerCase())
-                );
-                
-                if (containsKeyword) {
-                    foundInGroup++;
-                    const messageDate = new Date(message.date * 1000);
-                    results.push({
-                        id: message.id,
-                        groupName: group.name,
-                        text: messageText,
-                        date: messageDate.toLocaleString('ru-RU'),
-                        timestamp: messageDate.getTime(),
-                        sender: message.sender ? (
-                            message.sender.username ? `@${message.sender.username}` :
-                            message.sender.phone ? `+${message.sender.phone}` :
-                            message.sender.firstName ? message.sender.firstName :
-                            'Аноним'
-                        ) : 'Аноним',
-                        link: (() => {
-                            const groupIdStr = String(Math.abs(groupId));
-                            const chatId = groupIdStr.startsWith('100') ? groupIdStr.substring(3) : groupIdStr;
-                            return `https://t.me/c/${chatId}/${message.id}`;
-                        })()
+                    // Проверяем наличие ключевых слов
+                    const lowerMessageText = messageText.toLowerCase();
+                    const containsKeyword = keywords.some(keyword => {
+                        const keywordLower = keyword.toLowerCase().trim();
+                        
+                        // Ищем как отдельное слово с учётом русских символов
+                        const patterns = [
+                            // Слово в начале строки или после пробела/знака препинания
+                            new RegExp(`(^|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])${keywordLower}($|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])`, 'i'),
+                            // Дополнительная проверка для коротких слов
+                            keywordLower.length <= 3 ? new RegExp(`\\s${keywordLower}\\s`, 'i') : null
+                        ].filter(Boolean);
+                        
+                        return patterns.some(pattern => pattern.test(' ' + lowerMessageText + ' '));
                     });
-                }
-            }
-            
-           
-        }
 
-            results.sort((a, b) => b.timestamp - a.timestamp);
-            return results.slice(0, limit);
-        } catch (error) {
-            
-            return [];
+                    // Добавь после проверки ключевых слов:
+                    if (containsKeyword) {
+                        console.log(`Найдено совпадение: "${messageText.substring(0, 100)}..."`);
+                    }
+
+
+                                        
+                    if (containsKeyword) {
+                        foundInGroup++;
+                        const messageDate = new Date(message.date * 1000);
+                        results.push({
+                            id: message.id,
+                            groupName: group.name,
+                            text: messageText,
+                            date: messageDate.toLocaleString('ru-RU'),
+                            timestamp: messageDate.getTime(),
+                            sender: message.sender ? (
+                                message.sender.username ? `@${message.sender.username}` :
+                                message.sender.phone ? `+${message.sender.phone}` :
+                                message.sender.firstName ? message.sender.firstName :
+                                'Аноним'
+                            ) : 'Аноним',
+                            link: (() => {
+                                const groupIdStr = String(Math.abs(groupId));
+                                const chatId = groupIdStr.startsWith('100') ? groupIdStr.substring(3) : groupIdStr;
+                                return `https://t.me/c/${chatId}/${message.id}`;
+                            })()
+                        });
+                    }
+                }
+                
+                processedGroups++;
+                console.log(`✅ Группа "${group.name}" обработана (${processedGroups}/${totalGroups}). Найдено: ${foundInGroup} сообщений`);
+                
+                // Небольшая пауза между группами
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+            } catch (error) {
+                processedGroups++;
+                console.error(`❌ Ошибка в группе "${group.name}":`, error.message);
+                
+                // Если это flood wait, показываем время ожидания
+                if (error.message.includes('flood wait') || error.message.includes('FLOOD_WAIT')) {
+                    const waitTime = error.seconds || 'неизвестно';
+                    console.log(`⏳ ОЖИДАНИЕ ${waitTime} секунд из-за ограничений Telegram. Поиск продолжится автоматически...`);
+                    console.log(`📊 Прогресс: ${processedGroups}/${totalGroups} групп обработано`);
+                }
+                
+                // Даже при ошибке ждём перед следующей группой
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
         }
+        
+        console.log(`🎉 Поиск завершен! Всего найдено ${results.length} сообщений в ${totalGroups} группах`);
+        
+        results.sort((a, b) => b.timestamp - a.timestamp);
+        return results.slice(0, limit);
+        
+    } catch (error) {
+        console.error('💥 Общая ошибка поиска:', error);
+        return [];
     }
+}
     
         
         async getLastMessageId(groupId) {

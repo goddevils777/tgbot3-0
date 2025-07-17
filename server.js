@@ -28,6 +28,53 @@ const requestManager = new RequestManager();
 const userSessionManager = new UserSessionManager(); // Главный менеджер изоляции
 
 
+// Система управления активными Telegram операциями
+const activeTelegramOperations = new Map(); // userId -> { type, startTime }
+
+// Функции управления операциями
+function setActiveTelegramOperation(userId, operationType) {
+    activeTelegramOperations.set(userId, {
+        type: operationType,
+        startTime: new Date().toISOString()
+    });
+    console.log(`Операция ${operationType} запущена для пользователя ${userId}`);
+}
+
+function clearActiveTelegramOperation(userId) {
+    const operation = activeTelegramOperations.get(userId);
+    if (operation) {
+        console.log(`Операция ${operation.type} завершена для пользователя ${userId}`);
+        activeTelegramOperations.delete(userId);
+    }
+}
+
+function getActiveOperation(userId) {
+    return activeTelegramOperations.get(userId);
+}
+
+async function checkAllActiveOperations(userId) {
+    // Проверяем системные операции
+    const systemOperation = activeTelegramOperations.get(userId);
+    if (systemOperation) {
+        return { isActive: true, type: systemOperation.type };
+    }
+    
+    // Проверяем автопоиск
+    try {
+        const autoSearchManager = await userSessionManager.getUserAutoSearchManager(userId, userManager.getUserSessionsDir(userId));
+        const autoSearch = autoSearchManager.getUserAutoSearch(userId);
+        if (autoSearch && autoSearch.isActive) {
+            return { isActive: true, type: 'autosearch' };
+        }
+    } catch (error) {
+        console.error('Ошибка проверки автопоиска:', error);
+    }
+    
+    return { isActive: false, type: null };
+}
+
+
+
 
 const app = express();
 const PORT = 3000;
@@ -155,35 +202,48 @@ setTimeout(async () => {
 // API для поиска сообщений
 app.post('/api/search', async (req, res) => {
     try {
-        const { keywords, groups, limit } = req.body;
-
-        // Валидация
-        if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+        // Проверяем активные операции
+        const activeOp = await checkAllActiveOperations(req.userId);
+        if (activeOp.isActive) {
             return res.json({ 
                 success: false, 
-                error: 'Добавьте хотя бы одно ключевое слово' 
+                error: `Операция "${activeOp.type}" уже выполняется. Дождитесь завершения.` 
             });
         }
         
-        if (!groups || groups.length === 0) {
-            return res.json({ 
-                success: false, 
-                error: 'Выберите хотя бы одну группу' 
-            });
+        // Устанавливаем активную операцию
+        setActiveTelegramOperation(req.userId, 'search');
+        
+        const { keywords, groups, limit } = req.body;
+
+        if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+            clearActiveTelegramOperation(req.userId);
+            return res.json({ success: false, error: 'Добавьте ключевые слова для поиска' });
         }
 
+        if (!groups || !Array.isArray(groups) || groups.length === 0) {
+            clearActiveTelegramOperation(req.userId);
+            return res.json({ success: false, error: 'Выберите группы для поиска' });
+        }
+
+        // Получаем изолированный TelegramClientAPI пользователя
         const telegramClientAPI = await userSessionManager.createUserTelegramClientAPI(req.userId, req.userSessionsDir);
 
         if (!telegramClientAPI) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ success: false, error: 'Нет активной Telegram сессии' });
         }
-        // ДОБАВЬ эту строку:
+        
         telegramClientAPI.userId = req.userId;
 
         const messages = await telegramClientAPI.searchMessages(keywords, groups, limit || 100);
+        
+        // Очищаем операцию и отправляем результат
+        clearActiveTelegramOperation(req.userId);
         res.json({ success: true, messages, count: messages.length });
 
     } catch (error) {
+        clearActiveTelegramOperation(req.userId);
         console.error('Ошибка поиска сообщений:', error);
         res.json({ success: false, error: error.message });
     }
@@ -416,10 +476,23 @@ app.post('/api/init-autosearch', async (req, res) => {
 // API для создания задания рассылки
 app.post('/api/create-broadcast', async (req, res) => {
     try {
+        // Проверяем активные операции
+        const activeOp = await checkAllActiveOperations(req.userId);
+        if (activeOp.isActive) {
+            return res.json({ 
+                success: false, 
+                error: `Операция "${activeOp.type}" уже выполняется. Дождитесь завершения.` 
+            });
+        }
+        
+        // Устанавливаем активную операцию
+        setActiveTelegramOperation(req.userId, 'broadcast');
+        
         const { messages, groups, startDateTime, frequency, isRandomBroadcast } = req.body;
         
         // Валидация
         if (!messages || !Array.isArray(messages) || messages.length === 0) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Введите хотя бы один вариант сообщения' 
@@ -427,6 +500,7 @@ app.post('/api/create-broadcast', async (req, res) => {
         }
         
         if (!groups || groups.length === 0) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Выберите хотя бы одну группу' 
@@ -434,6 +508,7 @@ app.post('/api/create-broadcast', async (req, res) => {
         }
         
         if (!startDateTime) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Укажите дату и время начала' 
@@ -443,6 +518,7 @@ app.post('/api/create-broadcast', async (req, res) => {
         // Проверяем, что время в будущем
         const scheduledTime = new Date(startDateTime);
         if (scheduledTime <= new Date()) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Время начала должно быть в будущем' 
@@ -467,8 +543,12 @@ app.post('/api/create-broadcast', async (req, res) => {
         };
         broadcastManager.scheduleTask(task, executionCallback);
         
+        // Очищаем операцию и возвращаем результат
+        clearActiveTelegramOperation(req.userId);
         res.json({ success: true, task: task });
+        
     } catch (error) {
+        clearActiveTelegramOperation(req.userId);
         console.error('Ошибка создания задания рассылки:', error);
         res.json({ success: false, error: error.message });
     }
@@ -1167,6 +1247,21 @@ app.get('/api/admin/check-rights', (req, res) => {
     }
 });
 
+// API для проверки всех активных Telegram операций
+app.get('/api/telegram-status', async (req, res) => {
+    try {
+        const status = await checkAllActiveOperations(req.userId);
+        res.json({ 
+            success: true,
+            hasActiveOperation: status.isActive,
+            operationType: status.type
+        });
+    } catch (error) {
+        console.error('Ошибка проверки статуса операций:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 
 
 
@@ -1260,13 +1355,21 @@ app.get('/api/autosearch-status', async (req, res) => {
         const autoSearchManager = await userSessionManager.getUserAutoSearchManager(req.userId, req.userSessionsDir);
         
         const search = autoSearchManager.getUserAutoSearch(req.userId);
+        const isActive = search ? search.isActive : false;
         const searches = search ? [search] : [];
-        res.json({ success: true, searches });
+        
+        res.json({ 
+            success: true, 
+            isActive: isActive,
+            searches: searches,
+            userId: req.userId 
+        });
     } catch (error) {
         console.error('Ошибка получения статуса автопоиска:', error);
         res.json({ success: false, error: error.message });
     }
 });
+
 
 // API для выхода пользователя
 app.post('/api/logout', (req, res) => {
@@ -1376,10 +1479,23 @@ app.get('/api/telegram-user', (req, res) => {
 // API для создания рассылки в личные сообщения
 app.post('/api/create-direct-broadcast', async (req, res) => {
     try {
+        // Проверяем активные операции
+        const activeOp = await checkAllActiveOperations(req.userId);
+        if (activeOp.isActive) {
+            return res.json({ 
+                success: false, 
+                error: `Операция "${activeOp.type}" уже выполняется. Дождитесь завершения.` 
+            });
+        }
+        
+        // Устанавливаем активную операцию
+        setActiveTelegramOperation(req.userId, 'direct-broadcast');
+        
         const { messages, participants, startDateTime, dailyLimit } = req.body;
         
         // Валидация
         if (!messages || !Array.isArray(messages) || messages.length === 0) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Введите хотя бы один вариант сообщения' 
@@ -1387,6 +1503,7 @@ app.post('/api/create-direct-broadcast', async (req, res) => {
         }
         
         if (!participants || !Array.isArray(participants) || participants.length === 0) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Добавьте хотя бы одного участника' 
@@ -1394,6 +1511,7 @@ app.post('/api/create-direct-broadcast', async (req, res) => {
         }
         
         if (!startDateTime) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Укажите дату и время начала' 
@@ -1401,6 +1519,7 @@ app.post('/api/create-direct-broadcast', async (req, res) => {
         }
         
         if (!dailyLimit || dailyLimit < 1 || dailyLimit > 15) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Лимит сообщений должен быть от 1 до 15' 
@@ -1410,6 +1529,7 @@ app.post('/api/create-direct-broadcast', async (req, res) => {
         // Проверяем, что время в будущем
         const scheduledTime = new Date(startDateTime);
         if (scheduledTime <= new Date()) {
+            clearActiveTelegramOperation(req.userId);
             return res.json({ 
                 success: false, 
                 error: 'Время начала должно быть в будущем' 
@@ -1433,8 +1553,12 @@ app.post('/api/create-direct-broadcast', async (req, res) => {
         };
         directBroadcastManager.scheduleTask(task, executionCallback);
         
+        // Очищаем операцию и возвращаем результат
+        clearActiveTelegramOperation(req.userId);
         res.json({ success: true, task: task });
+        
     } catch (error) {
+        clearActiveTelegramOperation(req.userId);
         console.error('Ошибка создания рассылки в личные сообщения:', error);
         res.json({ success: false, error: error.message });
     }
