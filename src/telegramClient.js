@@ -160,9 +160,9 @@ class TelegramClientAPI {
         }
     }
 
-    async searchMessages(keywords, groups, limit) {
+   async searchMessages(keywords, groups, limit, progressCallback = null) {
     if (!this.isConnected) {
-        console.log('❌ Клиент не подключен');
+        if (progressCallback) progressCallback({ type: 'error', message: 'Клиент не подключен' });
         return [];
     }
 
@@ -171,20 +171,46 @@ class TelegramClientAPI {
         let processedGroups = 0;
         const totalGroups = groups.length;
         
-        console.log(`🚀 Начинаем поиск в ${totalGroups} группах по ключевым словам: ${keywords.join(', ')}`);
+        if (progressCallback) {
+            progressCallback({
+                type: 'progress',
+                message: `Начинаем поиск в ${totalGroups} группах`,
+                progress: 5,
+                totalGroups,
+                processedGroups: 0
+            });
+        }
         
         for (const group of groups) {
-            console.log(`🔍 Поиск в группе "${group.name}" (${processedGroups + 1}/${totalGroups})`);
+            if (progressCallback) {
+                progressCallback({
+                    type: 'progress',
+                    message: `Поиск в группе "${group.name}" (${processedGroups + 1}/${totalGroups})`,
+                    progress: Math.floor((processedGroups / totalGroups) * 80) + 10,
+                    totalGroups,
+                    processedGroups,
+                    currentGroup: group.name
+                });
+            }
             
             const groupId = parseInt(group.id);
             
             try {
                 // Получаем сообщения с правильным лимитом
                 const messages = await this.client.getMessages(groupId, {
-                    limit: Math.max(limit * 2, 200)
+                    limit: limit || 100
                 });
 
-                console.log(`📨 Получено ${messages.length} сообщений из группы "${group.name}"`);
+                if (progressCallback) {
+                    progressCallback({
+                        type: 'progress',
+                        message: `Получено ${messages.length} сообщений из группы "${group.name}"`,
+                        progress: Math.floor((processedGroups / totalGroups) * 80) + 15,
+                        totalGroups,
+                        processedGroups,
+                        currentGroup: group.name
+                    });
+                }
                 
                 let foundInGroup = 0;
                 for (const message of messages) {
@@ -212,22 +238,13 @@ class TelegramClientAPI {
                         
                         // Ищем как отдельное слово с учётом русских символов
                         const patterns = [
-                            // Слово в начале строки или после пробела/знака препинания
                             new RegExp(`(^|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])${keywordLower}($|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])`, 'i'),
-                            // Дополнительная проверка для коротких слов
                             keywordLower.length <= 3 ? new RegExp(`\\s${keywordLower}\\s`, 'i') : null
                         ].filter(Boolean);
                         
                         return patterns.some(pattern => pattern.test(' ' + lowerMessageText + ' '));
                     });
-
-                    // Добавь после проверки ключевых слов:
-                    if (containsKeyword) {
-                        console.log(`Найдено совпадение: "${messageText.substring(0, 100)}..."`);
-                    }
-
-
-                                        
+                    
                     if (containsKeyword) {
                         foundInGroup++;
                         const messageDate = new Date(message.date * 1000);
@@ -253,20 +270,47 @@ class TelegramClientAPI {
                 }
                 
                 processedGroups++;
-                console.log(`✅ Группа "${group.name}" обработана (${processedGroups}/${totalGroups}). Найдено: ${foundInGroup} сообщений`);
+                
+                if (progressCallback) {
+                    progressCallback({
+                        type: 'progress',
+                        message: `Группа "${group.name}" обработана. Найдено: ${foundInGroup} сообщений`,
+                        progress: Math.floor((processedGroups / totalGroups) * 80) + 20,
+                        totalGroups,
+                        processedGroups,
+                        foundInGroup
+                    });
+                }
                 
                 // Небольшая пауза между группами
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
             } catch (error) {
                 processedGroups++;
-                console.error(`❌ Ошибка в группе "${group.name}":`, error.message);
                 
-                // Если это flood wait, показываем время ожидания
+                // Обработка flood wait
                 if (error.message.includes('flood wait') || error.message.includes('FLOOD_WAIT')) {
                     const waitTime = error.seconds || 'неизвестно';
-                    console.log(`⏳ ОЖИДАНИЕ ${waitTime} секунд из-за ограничений Telegram. Поиск продолжится автоматически...`);
-                    console.log(`📊 Прогресс: ${processedGroups}/${totalGroups} групп обработано`);
+                    if (progressCallback) {
+                        progressCallback({
+                            type: 'flood_wait',
+                            message: `Ожидание ${waitTime} секунд из-за ограничений Telegram...`,
+                            progress: Math.floor((processedGroups / totalGroups) * 80) + 10,
+                            waitTime: waitTime,
+                            totalGroups,
+                            processedGroups
+                        });
+                    }
+                } else {
+                    if (progressCallback) {
+                        progressCallback({
+                            type: 'error_group',
+                            message: `Ошибка в группе "${group.name}": ${error.message}`,
+                            progress: Math.floor((processedGroups / totalGroups) * 80) + 10,
+                            totalGroups,
+                            processedGroups
+                        });
+                    }
                 }
                 
                 // Даже при ошибке ждём перед следующей группой
@@ -274,13 +318,21 @@ class TelegramClientAPI {
             }
         }
         
-        console.log(`🎉 Поиск завершен! Всего найдено ${results.length} сообщений в ${totalGroups} группах`);
+        if (progressCallback) {
+            progressCallback({
+                type: 'finalizing',
+                message: 'Финализация результатов...',
+                progress: 95,
+                totalGroups,
+                processedGroups: totalGroups
+            });
+        }
         
         results.sort((a, b) => b.timestamp - a.timestamp);
         return results.slice(0, limit);
         
     } catch (error) {
-        console.error('💥 Общая ошибка поиска:', error);
+        if (progressCallback) progressCallback({ type: 'error', message: error.message });
         return [];
     }
 }

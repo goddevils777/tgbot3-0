@@ -19,6 +19,8 @@ const TelegramBotAuth = require('./src/telegramBot');
 const APIMonitor = require('./src/apiMonitor');
 
 
+
+
 // Инициализация мониторинга
 const apiMonitor = new APIMonitor();
 
@@ -77,6 +79,40 @@ async function checkAllActiveOperations(userId) {
 
 
 const app = express();
+
+const http = require('http');
+const { Server } = require('socket.io');
+
+// Создаем HTTP сервер и WebSocket
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+// Обработка WebSocket соединений
+io.on('connection', (socket) => {
+    console.log('Клиент подключился:', socket.id);
+    
+    socket.on('disconnect', () => {
+        console.log('Клиент отключился:', socket.id);
+    });
+});
+
+// Функция отправки прогресса конкретному пользователю
+// Функция отправки прогресса конкретному пользователю
+function sendProgressToUser(userId, data) {
+    console.log(`Отправляем прогресс пользователю ${userId}:`, data.type, data.message); // ДОБАВЬ
+    io.emit(`progress_${userId}`, data);
+}
+
+// Функция отправки flood wait уведомления
+function sendFloodWaitToUser(userId, seconds) {
+    io.emit(`flood_wait_${userId}`, { seconds });
+}
+
 const PORT = 3000;
 
 // Инициализация Telegram авторизации
@@ -151,13 +187,13 @@ app.use((req, res, next) => {
     if (cookies) {
         const userIdCookie = cookies.split(';').find(cookie => cookie.trim().startsWith('userId='));
         if (userIdCookie) {
-            userId = userIdCookie.split('=')[1];
+            userId = userIdCookie.split('=')[1].trim();
         }
     }
     
     // Проверяем есть ли userId и существует ли пользователь
     if (!userId || !userManager.userExists(userId)) {
-        // Если нет авторизации - перенаправляем на страницу входа
+        // Если нет авторизации - возвращаем ошибку для API
         if (req.url.startsWith('/api/') && 
             req.url !== '/api/register' && 
             req.url !== '/api/login' &&
@@ -183,9 +219,11 @@ app.use((req, res, next) => {
             return res.redirect('/login.html');
         }
     } else {
+        // Пользователь авторизован
         req.userId = userId;
         req.userSessionsDir = userManager.getUserSessionsDir(userId);
         userManager.updateLastActive(userId);
+        console.log('Пользователь авторизован:', userId);
     }
     
     next();
@@ -199,7 +237,6 @@ setTimeout(async () => {
     console.log('Telegram Client API готов к работе');
 }, 2000); // Даем 2 секунды на автоподключение
 
-// API для поиска сообщений
 app.post('/api/search', async (req, res) => {
     try {
         // Проверяем активные операции
@@ -226,28 +263,63 @@ app.post('/api/search', async (req, res) => {
             return res.json({ success: false, error: 'Выберите группы для поиска' });
         }
 
+        // Отправляем начальный прогресс
+        sendProgressToUser(req.userId, {
+            type: 'start',
+            message: 'Подключение к Telegram...',
+            progress: 0,
+            totalGroups: groups.length,
+            processedGroups: 0
+        });
+
         // Получаем изолированный TelegramClientAPI пользователя
         const telegramClientAPI = await userSessionManager.createUserTelegramClientAPI(req.userId, req.userSessionsDir);
 
         if (!telegramClientAPI) {
             clearActiveTelegramOperation(req.userId);
+            sendProgressToUser(req.userId, { type: 'error', message: 'Нет активной Telegram сессии' });
             return res.json({ success: false, error: 'Нет активной Telegram сессии' });
         }
         
         telegramClientAPI.userId = req.userId;
 
-        const messages = await telegramClientAPI.searchMessages(keywords, groups, limit || 100);
+        // НЕ ЖДЁМ завершения - запускаем асинхронно
+        searchMessagesWithProgress(telegramClientAPI, keywords, groups, limit, req.userId);
         
-        // Очищаем операцию и отправляем результат
-        clearActiveTelegramOperation(req.userId);
-        res.json({ success: true, messages, count: messages.length });
+        // Сразу отвечаем что поиск запущен
+        res.json({ success: true, message: 'Поиск запущен', status: 'started' });
 
     } catch (error) {
         clearActiveTelegramOperation(req.userId);
+        sendProgressToUser(req.userId, { type: 'error', message: error.message });
         console.error('Ошибка поиска сообщений:', error);
         res.json({ success: false, error: error.message });
     }
 });
+
+
+// В searchMessagesWithProgress замени на:
+async function searchMessagesWithProgress(telegramClientAPI, keywords, groups, limit, userId) {
+    try {
+        const messages = await telegramClientAPI.searchMessages(keywords, groups, limit || 100, (progressData) => {
+            sendProgressToUser(userId, progressData);
+        });
+        
+        // Отправляем результаты
+        sendProgressToUser(userId, {
+            type: 'complete',
+            message: `Поиск завершён! Найдено ${messages.length} сообщений`,
+            progress: 100,
+            results: messages
+        });
+        
+        clearActiveTelegramOperation(userId);
+        
+    } catch (error) {
+        sendProgressToUser(userId, { type: 'error', message: error.message });
+        clearActiveTelegramOperation(userId);
+    }
+}
 
 // API для получения информации о сессии для главной страницы
 app.get('/api/session-info', async (req, res) => {
@@ -750,7 +822,7 @@ app.post('/api/login', (req, res) => {
         
         if (result.success) {
             // Устанавливаем cookie с userId
-            res.setHeader('Set-Cookie', `userId=${result.userId}; Path=/; HttpOnly; Max-Age=31536000`);
+            res.setHeader('Set-Cookie', `userId=${result.userId}; Path=/; Max-Age=31536000`);
         }
         
         res.json(result);
@@ -1719,6 +1791,6 @@ app.post('/api/test-ai-prompt', async (req, res) => {
 
 
 
-app.listen(PORT, () => {
-    console.log(`Сервер запущен на http://localhost:${PORT}`);
+server.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
 });

@@ -8,7 +8,215 @@ const results = document.getElementById('results');
 let keywords = [];
 
 
+// WebSocket соединение для получения прогресса
+let socket = null;
+let userId = null;
 
+// Функция для получения cookie по имени
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// Инициализация WebSocket
+function initWebSocket() {
+    console.log('Инициализация WebSocket...');
+    socket = io();
+    
+    socket.on('connect', () => {
+        console.log('WebSocket подключен!');
+    });
+    
+    socket.on('disconnect', () => {
+        console.log('WebSocket отключен!');
+    });
+    
+    // ВОЗВРАЩАЕМ: получение userId из cookie
+    userId = getCookie('userId');
+    console.log('UserID из cookie:', userId);
+    
+    if (userId) {
+        // Подписываемся на события прогресса для этого пользователя
+        socket.on(`progress_${userId}`, handleSearchProgress);
+        socket.on(`flood_wait_${userId}`, handleFloodWait);
+        
+        console.log(`Подписались на события: progress_${userId}`);
+    } else {
+        console.log('UserID не найден в cookies, нужна авторизация');
+    }
+}
+
+// Обработка прогресса поиска
+
+// Переменные для отслеживания времени
+let searchStartTime = null;
+let lastProgressUpdate = 0;
+let progressAnimationInterval = null;
+
+// Обработка прогресса поиска
+function handleSearchProgress(data) {
+    console.log('Получен прогресс:', data);
+    
+    const progressText = document.getElementById('searchProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressCounter = document.getElementById('progressText');
+    const timeEstimate = document.getElementById('timeEstimate'); // Добавим этот элемент
+    
+    if (!progressText || !progressFill || !progressCounter) {
+        console.log('Элементы прогресса не найдены');
+        return;
+    }
+    
+    switch (data.type) {
+        case 'start':
+            searchStartTime = Date.now();
+            startSmoothProgress(0, data.progress || 5);
+            progressText.textContent = data.message;
+            if (data.totalGroups) {
+                progressCounter.textContent = `Подготовка к поиску в ${data.totalGroups} группах`;
+            }
+            break;
+            
+        case 'progress':
+            const elapsed = searchStartTime ? (Date.now() - searchStartTime) / 1000 : 0;
+            
+            // Увеличиваем расчётное время в 6-7 раз + большой буфер
+            let estimated;
+            if (data.progress > 10) {
+                const baseEstimate = (elapsed / data.progress) * 100;
+                estimated = Math.round(baseEstimate * 6 + 180); // Умножаем на 6 + добавляем 3 минуты
+            } else {
+                estimated = 600; // Начальная оценка 10 минут
+            }
+            
+            const remaining = Math.max(120, estimated - elapsed); // Минимум 2 минуты
+            
+            startSmoothProgress(lastProgressUpdate, data.progress);
+            progressText.textContent = data.message;
+            
+            if (data.totalGroups) {
+                progressCounter.textContent = `Обработано: ${data.processedGroups || 0}/${data.totalGroups} групп`;
+            }
+            
+            // Показываем значительно увеличенное время
+            if (timeEstimate) {
+                if (remaining > 180) {
+                    timeEstimate.textContent = `Примерно осталось: ~${Math.ceil(remaining / 60)} мин`;
+                } else {
+                    timeEstimate.textContent = `Примерно осталось: ~${Math.ceil(remaining)} сек`;
+                }
+                timeEstimate.style.color = '#666';
+            }
+            break;
+            
+        case 'flood_wait':
+            progressText.textContent = data.message;
+            progressText.style.color = '#ff9800';
+            
+            // Показываем время ожидания
+            if (timeEstimate && data.waitTime) {
+                timeEstimate.textContent = `Ожидание: ${data.waitTime} сек`;
+                timeEstimate.style.color = '#ff9800';
+            }
+            
+            notify.warning(`Ожидание ${data.waitTime} сек из-за ограничений Telegram`);
+            // Показываем увеличенное время ожидания
+            if (timeEstimate && data.waitTime) {
+                    const inflatedWaitTime = Math.ceil(data.waitTime * 3); // Увеличиваем в 3 раза
+                    timeEstimate.textContent = `Ожидание ограничений: ~${inflatedWaitTime} сек`;
+                    timeEstimate.style.color = '#ff9800';
+                }
+            break;
+            
+        case 'complete':
+            const totalTime = searchStartTime ? (Date.now() - searchStartTime) / 1000 : 0;
+            
+            clearInterval(progressAnimationInterval);
+            progressFill.style.width = '100%';
+            progressText.textContent = data.message;
+            progressText.style.color = '#4caf50';
+            
+            if (timeEstimate) {
+                timeEstimate.textContent = `Завершено за ${Math.round(totalTime)} сек`;
+                timeEstimate.style.color = '#4caf50';
+            }
+            
+            // Отображаем результаты
+            if (data.results) {
+                window.lastSearchResults = data.results;
+                displayResults(data.results, keywords);
+                
+                const saveButton = document.getElementById('saveToHistory');
+                const clearButton = document.getElementById('clearResultsBtn');
+                if (saveButton) saveButton.style.display = 'block';
+                if (clearButton) clearButton.style.display = 'block';
+            }
+            
+            // Очищаем прогресс через 3 секунды
+            setTimeout(() => {
+                const results = document.getElementById('results');
+                const loadingContainer = results.querySelector('.loading-container');
+                if (loadingContainer) {
+                    loadingContainer.remove();
+                }
+            }, 3000);
+            break;
+            
+        case 'error':
+            clearInterval(progressAnimationInterval);
+            progressText.textContent = 'Ошибка: ' + data.message;
+            progressText.style.color = '#f44336';
+            
+            if (timeEstimate) {
+                timeEstimate.textContent = 'Поиск прерван';
+                timeEstimate.style.color = '#f44336';
+            }
+            
+            notify.error(data.message);
+            
+            setTimeout(() => {
+                const results = document.getElementById('results');
+                results.innerHTML = `<p>Ошибка: ${data.message}</p>`;
+            }, 1000);
+            break;
+    }
+}
+
+// Плавная анимация прогресса
+function startSmoothProgress(from, to) {
+    clearInterval(progressAnimationInterval);
+    
+    let current = from;
+    const step = (to - from) / 20; // 20 шагов анимации
+    
+    progressAnimationInterval = setInterval(() => {
+        current += step;
+        
+        if ((step > 0 && current >= to) || (step < 0 && current <= to)) {
+            current = to;
+            clearInterval(progressAnimationInterval);
+        }
+        
+        const progressFill = document.getElementById('progressFill');
+        if (progressFill) {
+            progressFill.style.width = Math.max(0, Math.min(100, current)) + '%';
+        }
+        
+        lastProgressUpdate = current;
+    }, 100); // Обновление каждые 100мс
+}
+
+// Обработка flood wait
+function handleFloodWait(data) {
+    notify.info(`⏳ Telegram ограничение: ожидание ${data.seconds} секунд`);
+}
+
+// Инициализируем WebSocket при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+    initWebSocket();
+});
 
 // Функция выхода из системы
 async function logout() {
@@ -135,20 +343,23 @@ function saveSettings() {
 // Загружаем при старте
 loadSettings();
 
-// Найди обработчик поиска и замени на это:
 searchBtn.addEventListener('click', async () => {
-        // Проверяем активные Telegram операции
-        try {
-            const statusResponse = await fetch('/api/telegram-status');
-            const statusData = await statusResponse.json();
-            
-            if (statusData.success && statusData.hasActiveOperation) {
-                notify.error(`⚠️ Операция "${statusData.operationType}" уже выполняется! Дождитесь завершения.`);
-                return;
-            }
-        } catch (error) {
-            console.log('Не удалось проверить статус операций');
+
+    window.lastSearchResults = null;
+    localStorage.removeItem('lastResults');
+    localStorage.removeItem('lastKeywordUsed');
+    // Проверяем активные Telegram операции
+    try {
+        const statusResponse = await fetch('/api/telegram-status');
+        const statusData = await statusResponse.json();
+        
+        if (statusData.success && statusData.hasActiveOperation) {
+            notify.error(`⚠️ Операция "${statusData.operationType}" уже выполняется! Дождитесь завершения.`);
+            return;
         }
+    } catch (error) {
+        console.log('Не удалось проверить статус операций');
+    }
     
     // Проверяем лимит ключевых слов
     const currentWord = searchInput.value.trim();
@@ -182,78 +393,49 @@ searchBtn.addEventListener('click', async () => {
         return;
     }
 
-
     saveSettings();
 
-    // Показываем прогресс
+    // Показываем начальный прогресс
+    // В searchBtn.addEventListener замени HTML прогресса на:
     results.innerHTML = `
         <div class="loading-container">
             <div class="loader"></div>
-            <p id="searchProgress">Подключение к Telegram...</p>
+            <p id="searchProgress">Запуск поиска...</p>
             <div id="progressBar" style="width: 100%; background: #f0f0f0; border-radius: 10px; margin: 10px 0;">
-                <div id="progressFill" style="width: 0%; height: 20px; background: #3498db; border-radius: 10px; transition: width 0.3s;"></div>
+                <div id="progressFill" style="width: 0%; height: 20px; background: linear-gradient(90deg, #3498db, #2ecc71); border-radius: 10px; transition: width 0.1s ease;"></div>
             </div>
-            <p id="progressText">0/0 групп обработано</p>
+            <p id="progressText">Подготовка...</p>
+            <p id="timeEstimate" style="font-size: 12px; color: #666; margin: 5px 0;">Расчёт времени...</p>
         </div>
     `;
 
-    // Запускаем обновление прогресса
-    startProgressUpdates(selectedGroups.length);
-    
-   try {
-    // Создаем контроллер для отмены запроса с увеличенным таймаутом
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 минут
-    
-    const response = await fetch('/api/search', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            keywords: keywords,
-            groups: selectedGroups,
-            limit: count
-        }),
-        signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId); // Отменяем таймаут если запрос успешен
-    
-    const data = await response.json();
-    console.log('Ответ от сервера:', data);
-    
-    if (data.success) {
-        // Сохраняем результаты для истории
-        window.lastSearchResults = data.messages || [];
+    try {
+        // Запускаем поиск на сервере (асинхронно)
+        const response = await fetch('/api/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                keywords: keywords,
+                groups: selectedGroups,
+                limit: count
+            })
+        });
         
-        // Отображаем результаты
-        displayResults(data.messages, keywords[0]);
+        const data = await response.json();
         
-        // Показываем кнопки если есть результаты
-        const saveButton = document.getElementById('saveToHistory');
-        const clearButton = document.getElementById('clearResultsBtn');
-        
-        if (window.lastSearchResults.length > 0) {
-            if (saveButton) saveButton.style.display = 'block';
-            if (clearButton) clearButton.style.display = 'block';
-        } else {
-            if (saveButton) saveButton.style.display = 'none';
-            if (clearButton) clearButton.style.display = 'none';
+        if (!data.success) {
+            results.innerHTML = `<p>Ошибка: ${data.error}</p>`;
+            notify.error(data.error);
         }
-    } else {
-        results.innerHTML = `<p>Ошибка: ${data.error}</p>`;
-    }
+        // Если успех - прогресс будет приходить через WebSocket
 
-} catch (error) {
-    console.error('Ошибка поиска:', error);
-    
-    if (error.name === 'AbortError') {
-        results.innerHTML = `<p>Поиск отменён по таймауту (превышено 5 минут). Попробуйте уменьшить количество групп.</p>`;
-    } else {
+    } catch (error) {
+        console.error('Ошибка запуска поиска:', error);
         results.innerHTML = `<p>Ошибка соединения: ${error.message}</p>`;
+        notify.error(`Ошибка соединения: ${error.message}`);
     }
-}
 });
 
 // Поиск по нажатию Enter
