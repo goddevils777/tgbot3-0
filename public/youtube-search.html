@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Search - Поиск Telegram групп</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        
+        <div class="youtube-search-section">
+            <h2>🎬 Поиск Telegram групп через YouTube</h2>
+            <p class="description">Найдём видео по ключевому слову и извлечём Telegram ссылки из описаний</p>
+            
+            <div class="search-form">
+                <div class="input-group">
+                    <label for="youtubeKeyword">Ключевое слово:</label>
+                    <input type="text" id="youtubeKeyword" placeholder="Например: криптовалюта, бизнес, IT" autocomplete="off">
+                </div>
+                
+                <div class="input-group">
+                    <label for="maxVideos">Количество видео (макс. 50):</label>
+                    <input type="number" id="maxVideos" value="20" min="1" max="50">
+                </div>
+                
+                <button id="searchYouTubeBtn" class="primary-btn">
+                    🔍 Искать на YouTube
+                </button>
+            </div>
+        </div>
+
+        <div class="results-section" style="display: none;">
+            <div class="results-header">
+                <h2>📊 Результаты поиска</h2>
+                <div class="stats">
+                    <span id="videosCount" class="stat-badge">Видео: 0</span>
+                    <span id="linksCount" class="stat-badge">Ссылок: 0</span>
+                    <span id="uniqueCount" class="stat-badge">Уникальных: 0</span>
+                </div>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="telegram-links">📱 Telegram ссылки</button>
+                <button class="tab-btn" data-tab="videos-list">🎬 Найденные видео</button>
+                <button class="tab-btn" data-tab="analysis">📈 Анализ</button>
+            </div>
+
+            <div id="telegram-links" class="tab-content active">
+                <div class="links-section">
+                    <div class="links-header">
+                        <h3>Найденные Telegram ссылки</h3>
+                        <div class="link-filters">
+                            <button class="filter-btn active" data-filter="all">Все ссылки</button>
+                            <button class="filter-btn" data-filter="invite">Invite-ссылки</button>
+                            <button class="filter-btn" data-filter="public">Публичные</button>
+                        </div>
+                    </div>
+                    <div id="linksList" class="links-list"></div>
+                </div>
+            </div>
+
+            <div id="videos-list" class="tab-content">
+                <div id="videosList" class="videos-list"></div>
+            </div>
+
+            <div id="analysis" class="tab-content">
+                <div id="analysisData" class="analysis-data"></div>
+            </div>
+        </div>
+        
+        <div id="searchProgress" class="progress-section" style="display: none;">
+            <div class="loader"></div>
+            <p id="progressText">Поиск на YouTube...</p>
+        </div>
+    </div>
+
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        // Инициализация шапки для YouTube поиска
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('🎬 YouTube Search', 'youtube-search');
+        });
+    </script>
+    
+    <script src="components/notifications.js"></script>
+    <script src="components/adminCheck.js"></script>
+    <script src="youtube-search.js"></script>
+</body>
+</html>

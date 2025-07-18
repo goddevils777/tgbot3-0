@@ -17,8 +17,10 @@ const GoogleAuthRoutes = require('./src/googleAuthRoutes');
 const TelegramAuthManager = require('./src/telegramAuth');
 const TelegramBotAuth = require('./src/telegramBot');
 const APIMonitor = require('./src/apiMonitor');
+const YouTubeParser = require('./src/youtubeParser');
 
-
+// Инициализация YouTube парсера
+const youtubeParser = new YouTubeParser();
 
 
 // Инициализация мониторинга
@@ -1785,6 +1787,106 @@ app.post('/api/test-ai-prompt', async (req, res) => {
         
     } catch (error) {
         console.error('Ошибка тестирования промпта:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+
+
+// API для поиска видео на YouTube
+app.post('/api/youtube-search', async (req, res) => {
+    try {
+        const { keyword, maxResults } = req.body;
+        
+        if (!keyword || keyword.trim().length === 0) {
+            return res.json({ 
+                success: false, 
+                error: 'Введите ключевое слово для поиска' 
+            });
+        }
+
+        if (!process.env.YOUTUBE_API_KEY) {
+            return res.json({ 
+                success: false, 
+                error: 'YouTube API ключ не настроен' 
+            });
+        }
+
+        console.log(`YouTube поиск: "${keyword}"`);
+        
+        const videos = await youtubeParser.searchVideos(keyword, maxResults || 50);
+        const telegramLinks = youtubeParser.extractTelegramLinks(videos);
+        
+        res.json({ 
+            success: true, 
+            videos: videos,
+            telegramLinks: telegramLinks,
+            videosCount: videos.length,
+            linksCount: telegramLinks.length
+        });
+
+    } catch (error) {
+        console.error('Ошибка YouTube поиска:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения деталей видео
+app.get('/api/youtube-video/:videoId', async (req, res) => {
+    try {
+        const { videoId } = req.params;
+        
+        const videoDetails = await youtubeParser.getVideoDetails(videoId);
+        
+        if (!videoDetails) {
+            return res.json({ 
+                success: false, 
+                error: 'Видео не найдено' 
+            });
+        }
+
+        // Извлекаем ссылки из детального описания
+        const telegramLinks = youtubeParser.extractTelegramLinks([videoDetails]);
+        
+        res.json({ 
+            success: true, 
+            video: videoDetails,
+            telegramLinks: telegramLinks
+        });
+
+    } catch (error) {
+        console.error('Ошибка получения видео:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для анализа найденных Telegram ссылок
+app.post('/api/analyze-telegram-links', async (req, res) => {
+    try {
+        const { links } = req.body;
+        
+        if (!links || !Array.isArray(links)) {
+            return res.json({ 
+                success: false, 
+                error: 'Неверный формат ссылок' 
+            });
+        }
+
+        // Группируем ссылки по типам
+        const analysis = {
+            inviteLinks: links.filter(link => link.isInviteLink),
+            publicChannels: links.filter(link => !link.isInviteLink && !link.identifier.includes('+')),
+            totalLinks: links.length,
+            uniqueChannels: [...new Set(links.map(link => link.identifier))].length
+        };
+
+        res.json({ 
+            success: true, 
+            analysis: analysis
+        });
+
+    } catch (error) {
+        console.error('Ошибка анализа ссылок:', error);
         res.json({ success: false, error: error.message });
     }
 });
