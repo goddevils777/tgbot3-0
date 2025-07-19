@@ -3,32 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Search - Поиск Telegram групп</title>
+    <title>YouTube Search - Поиск Telegram чатов</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         
-        <div class="youtube-search-section">
-            <h2>🎬 Поиск Telegram групп через YouTube</h2>
+<div class="youtube-search-section">
+            <h2>🎬 Поиск Telegram чатов через YouTube</h2>
             <p class="description">Найдём видео по ключевому слову и извлечём Telegram ссылки из описаний</p>
+            
+           
             
             <div class="search-form">
                 <div class="input-group">
-                    <label for="youtubeKeyword">Ключевое слово:</label>
-                    <input type="text" id="youtubeKeyword" placeholder="Например: криптовалюта, бизнес, IT" autocomplete="off">
+                    <label for="youtubeKeyword">Ключевые слова:</label>
+                    <input type="text" id="youtubeKeyword" placeholder="Введите слово и нажмите пробел..." autocomplete="off">
+                    <div id="keywordTags" class="keyword-tags"></div>
                 </div>
                 
-                <div class="input-group">
-                    <label for="maxVideos">Количество видео (макс. 50):</label>
-                    <input type="number" id="maxVideos" value="20" min="1" max="50">
+                <div class="form-row-main">
+                    <div class="input-group">
+                        <label for="maxVideos">Количество видео (макс. 200):</label>
+                        <input type="number" id="maxVideos" value="20" min="1" max="50">
+                        <small class="input-hint">На каждый ключевик</small>
+                    </div>
+                    <div class="form-row-dates">
+                    <div class="input-group flex-grow">
+                        <label for="dateFrom">Видео с даты:</label>
+                        <input type="date" id="dateFrom">
+                        <small class="input-hint">Необязательно</small>
+                    </div>
+                    
+                    <div class="input-group flex-grow">
+                        <label for="dateTo">Видео до даты:</label>
+                        <input type="date" id="dateTo">
+                        <small class="input-hint">Необязательно</small>
+                    </div>
+                </div>
+                    
+                    <div class="button-container">
+                        <button id="searchYouTubeBtn" class="primary-btn">
+                            🔍 Искать на YouTube
+                        </button>
+                    </div>
                 </div>
                 
-                <button id="searchYouTubeBtn" class="primary-btn">
-                    🔍 Искать на YouTube
-                </button>
+            </div>
+        </br>
+             <div class="tips-section">
+                <h3>💡 Полезные советы для поиска:</h3>
+                <div class="tips-grid">
+                    <div class="tip-item">
+                        <span class="tip-icon">📢</span>
+                        <div class="tip-content">
+                            <strong>Находим каналы и чаты</strong>
+                            <p>Парсер найдет как публичные каналы, так и приватные invite-чаты</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tip-item">
+                        <span class="tip-icon">🔍</span>
+                        <div class="tip-content">
+                            <strong>Как найти чаты в каналах:</strong>
+                            <p>Зайди в Telegram канал → нажми "Поиск" → введи <code>чат</code> или <code>t.me/+</code></p>
+                        </div>
+                    </div>
+                    
+                    <div class="tip-item">
+                        <span class="tip-icon">🎯</span>
+                        <div class="tip-content">
+                            <strong>Секрет:</strong>
+                            <p>Владельцы каналов часто делятся ссылками на приватные чаты внутри своих каналов</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+        
 
         <div class="results-section" style="display: none;">
             <div class="results-header">
@@ -39,34 +91,15 @@
                     <span id="uniqueCount" class="stat-badge">Уникальных: 0</span>
                 </div>
             </div>
-            
-            <div class="tabs">
-                <button class="tab-btn active" data-tab="telegram-links">📱 Telegram ссылки</button>
-                <button class="tab-btn" data-tab="videos-list">🎬 Найденные видео</button>
-                <button class="tab-btn" data-tab="analysis">📈 Анализ</button>
-            </div>
+      
 
-            <div id="telegram-links" class="tab-content active">
+        <div id="telegram-links">
                 <div class="links-section">
-                    <div class="links-header">
-                        <h3>Найденные Telegram ссылки</h3>
-                        <div class="link-filters">
-                            <button class="filter-btn active" data-filter="all">Все ссылки</button>
-                            <button class="filter-btn" data-filter="invite">Invite-ссылки</button>
-                            <button class="filter-btn" data-filter="public">Публичные</button>
-                        </div>
-                    </div>
                     <div id="linksList" class="links-list"></div>
                 </div>
             </div>
 
-            <div id="videos-list" class="tab-content">
-                <div id="videosList" class="videos-list"></div>
-            </div>
 
-            <div id="analysis" class="tab-content">
-                <div id="analysisData" class="analysis-data"></div>
-            </div>
         </div>
         
         <div id="searchProgress" class="progress-section" style="display: none;">
@@ -75,10 +108,8 @@
         </div>
     </div>
 
-    <!-- Подключение компонента шапки -->
     <script src="components/header.js"></script>
     <script>
-        // Инициализация шапки для YouTube поиска
         document.addEventListener('DOMContentLoaded', () => {
             initHeader('🎬 YouTube Search', 'youtube-search');
         });

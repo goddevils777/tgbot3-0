@@ -1,5 +1,8 @@
 @import url('styles/googleAuth.css');
 
+
+
+
 * {
     margin: 0;
     padding: 0;
@@ -760,6 +763,331 @@ input::placeholder {
     font-size: 14px;
     color: #7f8c8d;
     font-style: italic;
+}
+
+
+/* Стили для YouTube поиска в едином стиле проекта */
+.youtube-search-section {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.youtube-search-section h2 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.description {
+    color: #6c757d;
+    margin-bottom: 25px;
+    font-size: 14px;
+    text-align: center;
+}
+.search-form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    max-width: 900px;
+
+}
+
+.form-row-main {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.form-row-dates {
+    display: flex;
+    gap: 20px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group.flex-grow {
+    flex: 1;
+}
+
+.input-group label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+    font-size: 13px;
+}
+
+.input-group input {
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+    background: #f8f9fa;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #007bff;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.input-hint {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .form-row-main,
+    .form-row-dates {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+
+/* Контейнер для кнопки - выравниваем по высоте инпута */
+.button-container {
+    display: flex;
+    align-items: flex-end;
+
+}
+
+/* Стили для блока подсказок */
+.tips-section {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border-left: 4px solid #17a2b8;
+}
+
+.tips-section h3 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 16px;
+}
+
+.tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.tip-item {
+    display: flex;
+    gap: 12px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.tip-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.tip-content strong {
+    display: block;
+    color: #2c3e50;
+    font-size: 13px;
+    margin-bottom: 5px;
+}
+
+.tip-content p {
+    margin: 0;
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.tip-content code {
+    background: #e9ecef;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #495057;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .tips-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .tips-section {
+        padding: 15px;
+    }
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+    height: 42px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+}
+
+.primary-btn:hover {
+    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+    /* Убираем transform и оставляем только изменение цвета */
+}
+
+.primary-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: #6c757d;
+}
+
+/* Стили для динамических тегов ключевиков */
+.keyword-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    min-height: 20px;
+}
+
+.keyword-tag {
+    background: #007bff;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: slideIn 0.3s ease;
+}
+
+.remove-keyword {
+    background: rgba(255,255,255,0.3);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.remove-keyword:hover {
+    background: rgba(255,255,255,0.5);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Обновляем стили поля ввода */
+.input-group input {
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+    background: #f8f9fa;
+    margin-bottom: 0; /* Убираем отступ снизу */
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+    font-size: 13px;
+}
+
+.input-group input {
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+    background: #f8f9fa;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #007bff;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+.primary-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .search-form {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        max-width: 100%;
+    }
+    
+    .youtube-search-section {
+        padding: 20px;
+    }
 }
 
 /* Стили для страницы управления сессиями */
@@ -3922,4 +4250,387 @@ input::placeholder {
     background: #218838 !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
+}
+
+/* Стили для базы данных групп */
+.database-section {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+.database-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.search-form {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.search-form input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border: 2px solid #dee2e6;
+    background: white;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.3s;
+}
+
+.filter-btn.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.stats-bar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.stat-badge {
+    background: #e9ecef;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.groups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.group-item {
+    padding: 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    background: white;
+    transition: all 0.3s;
+}
+
+.group-item:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 10px rgba(0,123,255,0.1);
+}
+
+.invite-group {
+    border-left: 4px solid #dc3545;
+}
+
+.public-group {
+    border-left: 4px solid #28a745;
+}
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.group-info h4 {
+    margin: 0 0 5px 0;
+    color: #2c3e50;
+    font-size: 16px;
+}
+
+.group-description {
+    margin: 0;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.group-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.copy-btn, .open-btn {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    color: white;
+    transition: all 0.2s;
+}
+
+.copy-btn {
+    background: #6c757d;
+}
+
+.copy-btn:hover {
+    background: #5a6268;
+}
+
+.open-btn {
+    background: #007bff;
+}
+
+.open-btn:hover {
+    background: #0056b3;
+}
+
+.group-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: #6c757d;
+    flex-wrap: wrap;
+}
+
+.group-type, .group-source, .group-date {
+    padding: 4px 8px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s;
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+.secondary-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.secondary-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* Современные стили для результатов поиска */
+.link-item {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 15px;
+    border-left: 4px solid #e9ecef;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.link-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.invite-link {
+    border-left-color: #dc3545;
+    background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+}
+
+.public-link {
+    border-left-color: #28a745;
+    background: linear-gradient(135deg, #fff 0%, #f8fff8 100%);
+}
+
+.link-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.link-info {
+    flex: 1;
+}
+
+.link-url {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    color: #007bff;
+    text-decoration: none;
+    margin-bottom: 5px;
+    transition: color 0.3s;
+}
+
+.link-url:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.link-type {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.invite-link .link-type {
+    background: #dc3545;
+}
+
+.public-link .link-type {
+    background: #28a745;
+}
+
+.link-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.watch-btn, .check-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.watch-btn {
+    background: #007bff;
+    color: white;
+}
+
+.watch-btn:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+.check-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.check-btn:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+}
+
+.check-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.video-source {
+    padding-top: 15px;
+    border-top: 1px solid #f8f9fa;
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.export-section {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 25px;
+    margin-top: 25px;
+    text-align: center;
+}
+
+.export-section h3 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.check-all-btn {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.check-all-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
+}
+
+.export-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.export-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .link-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .export-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
 }

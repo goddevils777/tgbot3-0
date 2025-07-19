@@ -18,9 +18,14 @@ const TelegramAuthManager = require('./src/telegramAuth');
 const TelegramBotAuth = require('./src/telegramBot');
 const APIMonitor = require('./src/apiMonitor');
 const YouTubeParser = require('./src/youtubeParser');
+const GroupsDatabase = require('./database/groupsDatabase');
+
+// Инициализация базы данных групп
+const groupsDB = new GroupsDatabase();
 
 // Инициализация YouTube парсера
 const youtubeParser = new YouTubeParser();
+
 
 
 // Инициализация мониторинга
@@ -411,46 +416,102 @@ app.get('/api/channels', async (req, res) => {
 });
 
 // API для проверки live stream
-app.post('/api/check-livestream', async (req, res) => {
+// API для проверки валидности Telegram ссылки
+app.post('/api/check-telegram-link', async (req, res) => {
     try {
-        const { channelId } = req.body;
+        const { link } = req.body;
         
-        if (!channelId) {
-            return res.json({ 
-                success: false, 
-                error: 'Не указан ID канала' 
-            });
+        if (!link) {
+            return res.json({ valid: false, error: 'Ссылка не указана' });
         }
         
-        // Получаем изолированный TelegramClientAPI пользователя
-        const telegramClientAPI = await userSessionManager.createUserTelegramClientAPI(req.userId, req.userSessionsDir);
-        
-        if (!telegramClientAPI) {
-            return res.json({ 
-                success: false, 
-                error: 'Нет активной Telegram сессии' 
-            });
-        }
-        
-        // ИСПРАВЬ установку userId - добавь проверку:
-        if (req.userId) {
-            telegramClientAPI.userId = req.userId;
+        // Для invite-ссылок (начинающихся с +) делаем более детальную проверку
+        if (link.includes('/+')) {
+            try {
+                const https = require('https');
+                
+                const checkUrl = link.startsWith('https://') ? link : `https://${link}`;
+                
+                const response = await new Promise((resolve, reject) => {
+                    const req = https.request(checkUrl, {
+                        method: 'GET',
+                        timeout: 10000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                    }, (response) => {
+                        let data = '';
+                        response.on('data', chunk => data += chunk);
+                        response.on('end', () => resolve({ statusCode: response.statusCode, data }));
+                    });
+                    
+                    req.on('error', reject);
+                    req.on('timeout', () => reject(new Error('Timeout')));
+                    req.setTimeout(10000);
+                    req.end();
+                });
+                
+                // Проверяем содержимое ответа на наличие признаков валидной группы
+                const isValid = response.statusCode === 200 && 
+                               !response.data.includes('This invite link is expired') &&
+                               !response.data.includes('Эта ссылка-приглашение недействительна') &&
+                               !response.data.includes('приглашение истекло') &&
+                               (response.data.includes('tgme_page_title') || 
+                                response.data.includes('Join ') ||
+                                response.data.includes('Присоединиться'));
+                
+                res.json({ 
+                    valid: isValid,
+                    link: link,
+                    checkedAt: new Date().toISOString(),
+                    type: 'invite'
+                });
+                
+            } catch (error) {
+                res.json({ 
+                    valid: false, 
+                    error: 'Ошибка проверки invite-ссылки',
+                    link: link,
+                    type: 'invite'
+                });
+            }
         } else {
-            console.error('req.userId is undefined');
-            return res.json({ success: false, error: 'Пользователь не авторизован' });
+            // Для обычных публичных каналов - простая проверка
+            const https = require('https');
+            const checkUrl = link.startsWith('https://') ? link : `https://${link}`;
+            
+            const isValid = await new Promise((resolve) => {
+                const req = https.request(checkUrl, {
+                    method: 'HEAD',
+                    timeout: 5000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    }
+                }, (response) => {
+                    resolve([200, 302, 301].includes(response.statusCode));
+                });
+                
+                req.on('error', () => resolve(false));
+                req.on('timeout', () => resolve(false));
+                req.setTimeout(5000);
+                req.end();
+            });
+            
+            res.json({ 
+                valid: isValid,
+                link: link,
+                checkedAt: new Date().toISOString(),
+                type: 'public'
+            });
         }
         
-    const result = await telegramClientAPI.checkLiveStream(channelId, 'Выбранный канал');
-    res.json({ 
-        success: true, 
-        isStreamActive: result.isLive,
-        streamInfo: result.streamInfo,
-        participants: result.participants || [],
-        streamEnded: result.streamEnded
-    });
     } catch (error) {
-        console.error('Ошибка проверки стрима:', error);
-        res.json({ success: false, error: error.message });
+        console.error('Ошибка проверки ссылки:', error);
+        res.json({ 
+            valid: false, 
+            error: 'Ошибка проверки',
+            link: req.body.link
+        });
     }
 });
 
@@ -1795,8 +1856,15 @@ app.post('/api/test-ai-prompt', async (req, res) => {
 
 // API для поиска видео на YouTube
 app.post('/api/youtube-search', async (req, res) => {
+    // Отключаем кеширование
+    res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    });
+    
     try {
-        const { keyword, maxResults } = req.body;
+        const { keyword, maxResults, publishedAfter, publishedBefore } = req.body;
         
         if (!keyword || keyword.trim().length === 0) {
             return res.json({ 
@@ -1814,7 +1882,10 @@ app.post('/api/youtube-search', async (req, res) => {
 
         console.log(`YouTube поиск: "${keyword}"`);
         
-        const videos = await youtubeParser.searchVideos(keyword, maxResults || 50);
+        const videos = await youtubeParser.searchVideos(keyword, maxResults, {
+            publishedAfter,
+            publishedBefore
+        });
         const telegramLinks = youtubeParser.extractTelegramLinks(videos);
         
         res.json({ 
@@ -1860,6 +1931,90 @@ app.get('/api/youtube-video/:videoId', async (req, res) => {
     }
 });
 
+// API для сохранения найденных групп в базу
+app.post('/api/save-groups', (req, res) => {
+    try {
+        const { groups, source } = req.body;
+        
+        if (!groups || !Array.isArray(groups)) {
+            return res.json({ success: false, error: 'Неверный формат данных' });
+        }
+        
+        const results = {
+            saved: 0,
+            skipped: 0,
+            errors: 0
+        };
+        
+        groups.forEach(groupData => {
+            const result = groupsDB.addGroup({
+                ...groupData,
+                source: source || 'youtube',
+                userId: req.userId
+            });
+            
+            if (result.success) {
+                results.saved++;
+            } else if (result.reason === 'exists') {
+                results.skipped++;
+            } else {
+                results.errors++;
+            }
+        });
+        
+        res.json({ 
+            success: true, 
+            results,
+            message: `Сохранено: ${results.saved}, пропущено: ${results.skipped}, ошибок: ${results.errors}`
+        });
+        
+    } catch (error) {
+        console.error('Ошибка сохранения групп:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения всех групп из базы
+app.get('/api/groups', (req, res) => {
+    try {
+        const groups = groupsDB.getAllGroups();
+        res.json({ 
+            success: true, 
+            groups: groups,
+            total: groups.length
+        });
+    } catch (error) {
+        console.error('Ошибка получения групп:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для поиска групп в базе
+app.post('/api/search-groups', (req, res) => {
+    try {
+        const { keyword } = req.body;
+        
+        if (!keyword) {
+            return res.json({ success: false, error: 'Не указано ключевое слово' });
+        }
+        
+        const groups = groupsDB.searchGroups(keyword);
+        res.json({ 
+            success: true, 
+            groups: groups,
+            total: groups.length,
+            keyword: keyword
+        });
+    } catch (error) {
+        console.error('Ошибка поиска групп:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+
+
+
+
 // API для анализа найденных Telegram ссылок
 app.post('/api/analyze-telegram-links', async (req, res) => {
     try {
@@ -1888,6 +2043,60 @@ app.post('/api/analyze-telegram-links', async (req, res) => {
     } catch (error) {
         console.error('Ошибка анализа ссылок:', error);
         res.json({ success: false, error: error.message });
+    }
+});
+
+// API для проверки валидности Telegram ссылки
+app.post('/api/check-telegram-link', async (req, res) => {
+    try {
+        const { link } = req.body;
+        
+        if (!link) {
+            return res.json({ valid: false, error: 'Ссылка не указана' });
+        }
+        
+        // Простая проверка через HTTP запрос
+        const https = require('https');
+        const http = require('http');
+        
+        const checkUrl = link.startsWith('https://') ? link : `https://${link}`;
+        
+        const options = {
+            method: 'HEAD',
+            timeout: 5000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        };
+        
+        const protocol = checkUrl.startsWith('https://') ? https : http;
+        
+        const isValid = await new Promise((resolve) => {
+            const req = protocol.request(checkUrl, options, (response) => {
+                // Telegram может отвечать разными кодами для валидных ссылок
+                const validCodes = [200, 302, 301, 404]; // 404 может быть для приватных групп
+                resolve(validCodes.includes(response.statusCode));
+            });
+            
+            req.on('error', () => resolve(false));
+            req.on('timeout', () => resolve(false));
+            req.setTimeout(5000);
+            req.end();
+        });
+        
+        res.json({ 
+            valid: isValid,
+            link: link,
+            checkedAt: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Ошибка проверки ссылки:', error);
+        res.json({ 
+            valid: false, 
+            error: 'Ошибка проверки',
+            link: req.body.link
+        });
     }
 });
 

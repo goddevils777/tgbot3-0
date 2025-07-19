@@ -59,6 +59,7 @@ class HeaderComponent {
         const links = [
             { href: 'livestream.html', text: 'Live Stream', page: 'livestream' },
             { href: 'ai-sniper.html', text: 'AI Sniper', page: 'ai-sniper' },
+            { href: 'youtube-search.html', text: 'YouTube Search', id: 'youtube-search' }, // ДОБАВЬ ЭТУ СТРОКУ
             { href: 'index.html', text: 'Поиск в чатах', page: 'index' },
             { href: 'autosearch.html', text: 'Автопоиск в чатах', page: 'autosearch' },
             { href: 'broadcast.html', text: 'Рассылка в чаты', page: 'broadcast' },
