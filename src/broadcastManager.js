@@ -50,41 +50,41 @@ class BroadcastManager {
     }
 
     // Найди метод executeTask и обнови его:
-    async executeTask(taskId, telegramClientAPI) {
-        try {
-            const task = this.tasks.get(taskId);
-            if (!task) return;
+   async executeTask(taskId, telegramClientAPI) {
+    try {
+        const task = this.tasks.get(taskId);
+        if (!task) return;
 
-            // Проверяем наличие клиента
-            if (!telegramClientAPI) {
-                console.log('BroadcastManager: отсутствует Telegram клиент');
-                task.status = 'failed';
-                task.error = 'Нет активного Telegram клиента';
-                return;
-            }
+        // Проверяем наличие клиента
+        if (!telegramClientAPI) {
+            console.log('BroadcastManager: отсутствует Telegram клиент');
+            task.status = 'failed';
+            task.error = 'Нет активного Telegram клиента';
+            return;
+        }
 
-            task.status = 'executing';
-            console.log(`Выполнение задания: ${taskId}`);
-            
-            if (task.isRandomBroadcast) {
-                await this.executeRandomBroadcast(task, telegramClientAPI);
-            } else {
-                await this.executeNormalBroadcast(task, telegramClientAPI);
-            }
-            
+        task.status = 'executing';
+        console.log(`Выполнение задания: ${taskId}`);
+        
+        if (task.isRandomBroadcast) {
+            await this.executeRandomBroadcast(task, telegramClientAPI);
+        } else {
+            await this.executeNormalBroadcast(task, telegramClientAPI);
+            // Для обычной рассылки сразу завершаем
             task.status = 'completed';
             task.completedAt = new Date().toISOString();
             console.log(`Задание ${taskId} завершено`);
-            
-        } catch (error) {
-            console.error(`Ошибка выполнения задания ${taskId}:`, error);
-            const task = this.tasks.get(taskId);
-            if (task) {
-                task.status = 'failed';
-                task.error = error.message;
-            }
+        }
+        
+    } catch (error) {
+        console.error(`Ошибка выполнения задания ${taskId}:`, error);
+        const task = this.tasks.get(taskId);
+        if (task) {
+            task.status = 'failed';
+            task.error = error.message;
         }
     }
+}
 
     // Обнови executeNormalBroadcast:
     async executeNormalBroadcast(task, telegramClientAPI) {
@@ -106,25 +106,29 @@ class BroadcastManager {
         }
     }
 
-   // Рандомная рассылка в течение 24 часов
+
+// Рандомная рассылка в течение 24 часов
 async executeRandomBroadcast(task, telegramClientAPI) {
     console.log(`Начинаем рандомную рассылку на 24 часа для ${task.groups.length} групп`);
     
-    // НЕ меняем статус на completed здесь!
-    // Только планируем отправки
+    // Меняем статус на 'scheduled' вместо 'completed'
+    task.status = 'scheduled';
+    task.totalGroups = task.groups.length;
+    task.completedGroups = [];
+    task.failedGroups = [];
+    task.scheduledTimes = {}; // Добавляем объект для хранения времени планирования
     
     const now = new Date();
-    const groups = [...task.groups]; // Создаем копию
     
     // Планируем отправки
-    groups.forEach(group => {
+    task.groups.forEach(group => {
         const randomDelay = Math.random() * 24 * 60 * 60 * 1000; // 0-24 часа
-        // И замени на:
         const scheduledTime = new Date(now.getTime() + randomDelay);
-        // Корректируем на локальный часовой пояс
-        const localScheduledTime = new Date(scheduledTime.getTime() - (scheduledTime.getTimezoneOffset() * 60000));
-
-        console.log(`Группа ${group.name} запланирована на ${localScheduledTime.toLocaleString('ru-RU')}`);
+        
+        // Сохраняем время планирования для каждой группы
+        task.scheduledTimes[group.name] = scheduledTime.toISOString();
+        
+        console.log(`Группа ${group.name} запланирована на ${scheduledTime.toLocaleString('ru-RU')}`);
         
         setTimeout(async () => {
             try {
@@ -132,11 +136,12 @@ async executeRandomBroadcast(task, telegramClientAPI) {
                 await this.sendMessage(group, randomMessage, telegramClientAPI);
                 
                 // Отмечаем группу как выполненную
-                task.completedGroups = task.completedGroups || [];
                 task.completedGroups.push(group.name);
                 
+                console.log(`Отправлено в ${group.name}. Прогресс: ${task.completedGroups.length}/${task.totalGroups}`);
+                
                 // Проверяем, все ли группы выполнены
-                if (task.completedGroups.length === task.groups.length) {
+                if (task.completedGroups.length === task.totalGroups) {
                     task.status = 'completed';
                     task.completedAt = new Date().toISOString();
                     console.log(`Задание ${task.id} завершено`);
@@ -144,13 +149,13 @@ async executeRandomBroadcast(task, telegramClientAPI) {
                 
             } catch (error) {
                 console.error(`Ошибка отправки в группу ${group.name}:`, error);
-                task.failedGroups = task.failedGroups || [];
                 task.failedGroups.push({ group: group.name, error: error.message });
             }
         }, randomDelay);
     });
     
-    // Статус остается 'executing' до завершения всех отправок
+    // Выводим сообщение о планировании вместо завершения
+    console.log(`Задание ${task.id} запланировано`);
 }
 
     // Планирование следующего выполнения
