@@ -1,4 +1,4 @@
-# Telegram Search & Auto Bot
+# TELEGRAM MANAGER AI
 
 ## 🚀 Разработка на заказ
 

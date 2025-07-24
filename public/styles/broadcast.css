@@ -1,0 +1,129 @@
+/* Стили для статистики заданий */
+.task-stats {
+    display: flex;
+    gap: 15px;
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    flex-wrap: wrap;
+}
+
+.stats-item {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.stats-item.success {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.stats-item.error {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.stats-item.skipped {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.stats-item.total {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: #007bff;
+    border: 1px solid rgba(0, 123, 255, 0.2);
+}
+
+/* Стили для пропущенных групп */
+.schedule-item.skipped {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left-color: #ffc107;
+}
+
+/* Обновляем статусы заданий */
+.status-scheduled {
+    background-color: #17a2b8;
+    color: white;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+    .task-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .stats-item {
+        text-align: center;
+    }
+    
+    .schedule-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .schedule-time, .schedule-status {
+        text-align: left;
+    }
+}
+
+/* Улучшенные стили для расписания */
+.schedule-header {
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #495057;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.schedule-list {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.schedule-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 13px;
+    min-height: 40px;
+}
+
+.schedule-item:last-child {
+    border-bottom: none;
+}
+
+.group-name {
+    flex: 2;
+    font-weight: 500;
+    color: #495057;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.schedule-time {
+    flex: 1.5;
+    text-align: center;
+    color: #6c757d;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.schedule-status {
+    flex: 1;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 500;
+}

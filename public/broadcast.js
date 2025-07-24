@@ -260,8 +260,6 @@ async function loadBroadcastTasks() {
         console.error('Ошибка загрузки заданий:', error);
     }
 }
-
-// Отображение заданий рассылки
 // Отображение заданий рассылки
 function displayBroadcastTasks(tasks) {
     const tasksList = document.getElementById('tasksList');
@@ -276,11 +274,13 @@ function displayBroadcastTasks(tasks) {
         const totalGroups = task.totalGroups || task.groups.length;
         const completedCount = task.completedGroups ? task.completedGroups.length : 0;
         const failedCount = task.failedGroups ? task.failedGroups.length : 0;
+        const skippedCount = task.skippedGroups ? task.skippedGroups.length : 0;
         const progressPercent = totalGroups > 0 ? Math.round((completedCount / totalGroups) * 100) : 0;
         
         // Показываем прогресс только для запланированных и выполняющихся заданий
         const showProgress = ['scheduled', 'executing'].includes(task.status);
         
+        // Формируем информацию о планировании
         // Формируем информацию о планировании
         let scheduleInfo = '';
         if (task.scheduledTimes && Object.keys(task.scheduledTimes).length > 0) {
@@ -289,12 +289,22 @@ function displayBroadcastTasks(tasks) {
                     const date = new Date(time);
                     const isCompleted = task.completedGroups && task.completedGroups.includes(groupName);
                     const isFailed = task.failedGroups && task.failedGroups.some(f => f.group === groupName);
+                    const isSkipped = task.skippedGroups && task.skippedGroups.some(s => s.group === groupName);
                     
                     let status = '⏳ Запланировано';
-                    if (isCompleted) status = '✅ Отправлено';
-                    else if (isFailed) status = '❌ Ошибка';
+                    let className = 'pending';
+                    if (isCompleted) {
+                        status = '✅ Отправлено';
+                        className = 'completed';
+                    } else if (isFailed) {
+                        status = '❌ Ошибка';
+                        className = 'failed';
+                    } else if (isSkipped) {
+                        status = '⏭️ Пропущено';
+                        className = 'skipped';
+                    }
                     
-                    return `<div class="schedule-item ${isCompleted ? 'completed' : isFailed ? 'failed' : 'pending'}">
+                    return `<div class="schedule-item ${className}">
                         <span class="group-name">${groupName}</span>
                         <span class="schedule-time">${date.toLocaleString('ru-RU')}</span>
                         <span class="schedule-status">${status}</span>
@@ -309,6 +319,37 @@ function displayBroadcastTasks(tasks) {
                 </div>
             `;
         }
+
+        // Добавляем информацию о пропущенных группах
+        let skippedInfo = '';
+        if (task.skippedGroups && task.skippedGroups.length > 0) {
+            const skippedList = task.skippedGroups
+                .map(skipped => `<div class="skipped-item">
+                    <span class="skipped-group">❌ ${skipped.group}</span>
+                    <span class="skipped-reason">${skipped.reason}</span>
+                </div>`)
+                .join('');
+            
+            skippedInfo = `
+                <div class="skipped-details">
+                    <div class="skipped-header">⚠️ Пропущенные группы:</div>
+                    <div class="skipped-list">${skippedList}</div>
+                </div>
+            `;
+        }
+        
+        // Информация о статистике
+        let statsInfo = '';
+        if (showProgress || task.status === 'completed') {
+            statsInfo = `
+                <div class="task-stats">
+                    <div class="stats-item success">✅ Отправлено: ${completedCount}</div>
+                    <div class="stats-item error">❌ Ошибок: ${failedCount}</div>
+                    <div class="stats-item skipped">⏭️ Пропущено: ${skippedCount}</div>
+                    <div class="stats-item total">📊 Всего: ${totalGroups}</div>
+                </div>
+            `;
+        }
         
         return `
             <div class="task-item">
@@ -316,7 +357,7 @@ function displayBroadcastTasks(tasks) {
                     <div class="task-info">
                         <span class="task-status status-${task.status}">${getStatusText(task.status)}</span>
                         <span>Начало: ${new Date(task.startDateTime).toLocaleString('ru-RU')}</span>
-                        <span>Периодичность: ${getFrequencyText(task.frequency)}</span>
+                        <span>Тип: ${task.isRandomBroadcast ? 'Умная рассылка' : getFrequencyText(task.frequency)}</span>
                     </div>
                     <button class="delete-task" onclick="deleteBroadcastTask('${task.id}')">Удалить</button>
                 </div>
@@ -330,9 +371,10 @@ function displayBroadcastTasks(tasks) {
                         <div class="progress-bar">
                             <div class="progress-fill" style="width: ${progressPercent}%"></div>
                         </div>
-                        ${failedCount > 0 ? `<div class="failed-info">Ошибок: ${failedCount}</div>` : ''}
                     </div>
                 ` : ''}
+                
+                ${statsInfo}
                 
                 <div class="task-message">
                     ${task.messages ? 
@@ -343,6 +385,7 @@ function displayBroadcastTasks(tasks) {
                 </div>
                 
                 ${scheduleInfo}
+                ${skippedInfo}
                 
                 <div class="task-groups">Группы: ${task.groups.map(g => g.name).join(', ')}</div>
             </div>

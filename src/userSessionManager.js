@@ -3,6 +3,7 @@ const AutoSearchManager = require('./autoSearchManager');
 const BroadcastManager = require('./broadcastManager'); // Добавь импорт
 const DirectBroadcastManager = require('./directBroadcastManager');
 const AiSniperManager = require('./aiSniperManager');
+const AutoDeleteManager = require('./autoDeleteManager');
 
 class UserSessionManager {
     constructor() {
@@ -24,6 +25,9 @@ class UserSessionManager {
             // Создаем BroadcastManager для пользователя
             const broadcastManager = new BroadcastManager();
 
+            // Создаем AutoDeleteManager для пользователя
+            const autoDeleteManager = new AutoDeleteManager();
+
             // Создаем DirectBroadcastManager для пользователя
             const directBroadcastManager = new DirectBroadcastManager();
 
@@ -35,13 +39,36 @@ class UserSessionManager {
                 autoSearchManager,
                 broadcastManager,
                 directBroadcastManager,
-                aiSniperManager
+                aiSniperManager,
+                autoDeleteManager
             });
         }
         
         return this.userManagers.get(userId);
     }
 
+
+    // Получение AutoDeleteManager пользователя
+    async getUserAutoDeleteManager(userId, userSessionsDir) {
+        const managers = await this.getUserManagers(userId, userSessionsDir);
+        return managers.autoDeleteManager;
+    }
+
+    // Выполнение задания автоудаления
+    async executeAutoDeleteTask(userId, userSessionsDir, taskId) {
+        try {
+            const autoDeleteManager = await this.getUserAutoDeleteManager(userId, userSessionsDir);
+            const telegramClientAPI = await this.createUserTelegramClientAPI(userId, userSessionsDir);
+            
+            if (telegramClientAPI) {
+                await autoDeleteManager.executeTask(taskId, telegramClientAPI);
+            } else {
+                console.error(`Не удалось создать Telegram клиент для пользователя ${userId}`);
+            }
+        } catch (error) {
+            console.error(`Ошибка выполнения автоудаления для пользователя ${userId}:`, error);
+        }
+    }
 
     // Получение BroadcastManager пользователя
     async getUserBroadcastManager(userId, userSessionsDir) {

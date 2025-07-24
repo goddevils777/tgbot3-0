@@ -19,8 +19,8 @@ class HeaderComponent {
             <header class="header">
                 <div class="header-brand">
                     <div class="logo">
-                        <span class="logo-icon">🔍</span>
-                        <span class="logo-text">TG-Finder</span>
+                        <span class="logo-icon">🤖</span>
+                        <span class="logo-text">TELEGRAM MANAGER AI</span>
                     </div>
                     <h1>${this.pageTitle}</h1>
                 </div>
@@ -59,11 +59,12 @@ class HeaderComponent {
         const links = [
             { href: 'livestream.html', text: 'Live Stream', page: 'livestream' },
             { href: 'ai-sniper.html', text: 'AI Sniper', page: 'ai-sniper' },
-            { href: 'youtube-search.html', text: 'YouTube Search', id: 'youtube-search' }, // ДОБАВЬ ЭТУ СТРОКУ
+            { href: 'youtube-search.html', text: 'YouTube Search', page: 'youtube-search', id: 'youtube-search' }, // ДОБАВЬ ЭТУ СТРОКУ
             { href: 'index.html', text: 'Поиск в чатах', page: 'index' },
             { href: 'autosearch.html', text: 'Автопоиск в чатах', page: 'autosearch' },
             { href: 'broadcast.html', text: 'Рассылка в чаты', page: 'broadcast' },
             { href: 'direct-broadcast.html', text: 'Рассылка в ЛС', page: 'direct-broadcast' },
+            { href: 'auto-delete.html', text: 'Start TIMER-direct', page: 'auto-delete' },
             { href: 'sessions.html', text: 'Аккаунт', page: 'sessions' },
             { href: 'history.html', text: 'История поисков', page: 'history' }
         ];

@@ -2100,6 +2100,137 @@ app.post('/api/check-telegram-link', async (req, res) => {
     }
 });
 
+// API для создания задания автоудаления
+app.post('/api/create-auto-delete-task', async (req, res) => {
+    try {
+        // Проверяем активные операции
+        if (activeTelegramOperations.has(req.userId)) {
+            const operation = activeTelegramOperations.get(req.userId);
+            return res.json({ 
+                success: false, 
+                error: `У вас уже выполняется операция: ${operation.type}. Дождитесь завершения.` 
+            });
+        }
+
+        setActiveTelegramOperation(req.userId, 'auto-delete');
+
+        const { users, deleteTimer, startDateTime, settings } = req.body;
+
+        // Валидация
+        if (!users || !Array.isArray(users) || users.length === 0) {
+            clearActiveTelegramOperation(req.userId);
+            return res.json({ 
+                success: false, 
+                error: 'Введите хотя бы одного пользователя' 
+            });
+        }
+
+        if (!deleteTimer) {
+            clearActiveTelegramOperation(req.userId);
+            return res.json({ 
+                success: false, 
+                error: 'Выберите таймер автоудаления' 
+            });
+        }
+
+        if (!startDateTime) {
+            clearActiveTelegramOperation(req.userId);
+            return res.json({ 
+                success: false, 
+                error: 'Укажите дату и время начала' 
+            });
+        }
+
+        // Проверяем, что время в будущем
+        const scheduledTime = new Date(startDateTime);
+        if (scheduledTime <= new Date()) {
+            clearActiveTelegramOperation(req.userId);
+            return res.json({ 
+                success: false, 
+                error: 'Время начала должно быть в будущем' 
+            });
+        }
+
+        // Получаем изолированный AutoDeleteManager пользователя
+        const autoDeleteManager = await userSessionManager.getUserAutoDeleteManager(req.userId, req.userSessionsDir);
+
+        // Создаем задание
+        const task = autoDeleteManager.createTask({
+            users: users,
+            deleteTimer: deleteTimer,
+            startDateTime: startDateTime,
+            settings: settings || {}
+        });
+
+        // Планируем выполнение задания через UserSessionManager
+        const executionCallback = (taskId) => {
+            userSessionManager.executeAutoDeleteTask(req.userId, req.userSessionsDir, taskId);
+        };
+        autoDeleteManager.scheduleTask(task, executionCallback);
+
+        // Очищаем операцию и возвращаем результат
+        clearActiveTelegramOperation(req.userId);
+        res.json({ success: true, task: task });
+
+    } catch (error) {
+        clearActiveTelegramOperation(req.userId);
+        console.error('Ошибка создания задания автоудаления:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения списка заданий автоудаления
+app.get('/api/auto-delete-tasks', async (req, res) => {
+    try {
+        const autoDeleteManager = await userSessionManager.getUserAutoDeleteManager(req.userId, req.userSessionsDir);
+        
+        const tasks = autoDeleteManager.getAllTasks();
+        res.json({ success: true, tasks: tasks });
+    } catch (error) {
+        console.error('Ошибка получения заданий автоудаления:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для удаления задания автоудаления
+app.delete('/api/auto-delete-tasks/:taskId', async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        
+        const autoDeleteManager = await userSessionManager.getUserAutoDeleteManager(req.userId, req.userSessionsDir);
+        
+        const deleted = autoDeleteManager.deleteTask(taskId);
+        
+        if (deleted) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'Задание не найдено' });
+        }
+    } catch (error) {
+        console.error('Ошибка удаления задания автоудаления:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения деталей задания автоудаления
+app.get('/api/auto-delete-details/:taskId', async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        
+        const autoDeleteManager = await userSessionManager.getUserAutoDeleteManager(req.userId, req.userSessionsDir);
+        
+        const task = autoDeleteManager.getTask(taskId);
+        
+        if (task) {
+            res.json({ success: true, task: task });
+        } else {
+            res.json({ success: false, error: 'Задание не найдено' });
+        }
+    } catch (error) {
+        console.error('Ошибка получения деталей задания:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
 
 
 server.listen(PORT, () => {

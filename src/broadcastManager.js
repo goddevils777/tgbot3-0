@@ -107,55 +107,97 @@ class BroadcastManager {
     }
 
 
-// Рандомная рассылка в течение 24 часов
+// // Рандомная рассылка в течение 24 часов с умными интервалами и проверкой групп
 async executeRandomBroadcast(task, telegramClientAPI) {
-    console.log(`Начинаем рандомную рассылку на 24 часа для ${task.groups.length} групп`);
+    console.log(`Начинаем умную рассылку для ${task.groups.length} групп`);
     
-    // Меняем статус на 'scheduled' вместо 'completed'
     task.status = 'scheduled';
     task.totalGroups = task.groups.length;
     task.completedGroups = [];
     task.failedGroups = [];
-    task.scheduledTimes = {}; // Добавляем объект для хранения времени планирования
+    task.skippedGroups = []; // Новое поле для пропущенных групп
+    task.scheduledTimes = {};
     
     const now = new Date();
     
-    // Планируем отправки
-    task.groups.forEach(group => {
-        const randomDelay = Math.random() * 24 * 60 * 60 * 1000; // 0-24 часа
-        const scheduledTime = new Date(now.getTime() + randomDelay);
+    // Сначала проверяем все группы
+    console.log('🔍 Проверяем статус групп...');
+    
+    for (const group of task.groups) {
+        const status = await this.checkGroupStatus(group, telegramClientAPI);
         
-        // Сохраняем время планирования для каждой группы
+        if (!status.canSend) {
+            console.log(`❌ Пропускаем группу ${group.name}: ${status.reason}`);
+            task.skippedGroups.push({
+                group: group.name,
+                reason: status.reason
+            });
+            continue;
+        }
+        
+        if (status.warning) {
+            console.log(`⚠️  Группа ${group.name}: ${status.reason}`);
+        } else {
+            console.log(`✅ Группа ${group.name}: ${status.reason}`);
+        }
+        
+        // Рассчитываем умный интервал для каждой группы
+        // Рассчитываем умный интервал для каждой группы
+        let smartDelay = this.calculateSmartInterval();
+
+        // Для первых отправок добавляем базовую задержку
+        const groupIndex = task.groups.indexOf(group);
+        const baseDelay = groupIndex * (20 + Math.random() * 10) * 60 * 1000; // 20-30 минут между группами
+        smartDelay = Math.max(smartDelay, baseDelay);
+
+        const scheduledTime = new Date(now.getTime() + smartDelay);
+        
+        // Сохраняем время планирования
         task.scheduledTimes[group.name] = scheduledTime.toISOString();
         
-        console.log(`Группа ${group.name} запланирована на ${scheduledTime.toLocaleString('ru-RU')}`);
+        console.log(`📅 Группа ${group.name} запланирована на ${scheduledTime.toLocaleString('ru-RU')} (через ${Math.round(smartDelay / (1000 * 60))} минут)`);
         
         setTimeout(async () => {
             try {
+                // Повторная проверка перед отправкой
+                const finalCheck = await this.checkGroupStatus(group, telegramClientAPI);
+                
+                if (!finalCheck.canSend) {
+                    console.log(`❌ Финальная проверка: пропускаем ${group.name} - ${finalCheck.reason}`);
+                    task.skippedGroups.push({
+                        group: group.name,
+                        reason: `Финальная проверка: ${finalCheck.reason}`
+                    });
+                    return;
+                }
+                
                 const randomMessage = task.messages[Math.floor(Math.random() * task.messages.length)];
                 await this.sendMessage(group, randomMessage, telegramClientAPI);
                 
                 // Отмечаем группу как выполненную
                 task.completedGroups.push(group.name);
                 
-                console.log(`Отправлено в ${group.name}. Прогресс: ${task.completedGroups.length}/${task.totalGroups}`);
+                console.log(`✅ Отправлено в ${group.name}. Прогресс: ${task.completedGroups.length}/${task.totalGroups}`);
                 
-                // Проверяем, все ли группы выполнены
-                if (task.completedGroups.length === task.totalGroups) {
+                // Проверяем завершение
+                const totalProcessed = task.completedGroups.length + task.failedGroups.length + task.skippedGroups.length;
+                if (totalProcessed === task.totalGroups) {
                     task.status = 'completed';
                     task.completedAt = new Date().toISOString();
-                    console.log(`Задание ${task.id} завершено`);
+                    console.log(`🎉 Задание ${task.id} завершено! Отправлено: ${task.completedGroups.length}, Ошибок: ${task.failedGroups.length}, Пропущено: ${task.skippedGroups.length}`);
                 }
                 
             } catch (error) {
-                console.error(`Ошибка отправки в группу ${group.name}:`, error);
-                task.failedGroups.push({ group: group.name, error: error.message });
+                console.error(`❌ Ошибка отправки в группу ${group.name}:`, error);
+                task.failedGroups.push({ 
+                    group: group.name, 
+                    error: error.message 
+                });
             }
-        }, randomDelay);
-    });
+        }, smartDelay);
+    }
     
-    // Выводим сообщение о планировании вместо завершения
-    console.log(`Задание ${task.id} запланировано`);
+    console.log(`📋 Планирование завершено. Отправка запланирована в ${task.groups.length - task.skippedGroups.length} групп, пропущено: ${task.skippedGroups.length}`);
 }
 
     // Планирование следующего выполнения
@@ -231,6 +273,118 @@ async executeRandomBroadcast(task, telegramClientAPI) {
 
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // Умный расчет интервалов
+    calculateSmartInterval() {
+        const now = new Date();
+        const currentHour = now.getHours();
+        
+        // Определяем "хорошие" часы для отправки (избегаем ночь)
+        const goodHours = [8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21];
+        const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+        
+        console.log(`🕐 Текущий час: ${currentHour}, выходной: ${isWeekend}`);
+        
+        // Базовый интервал: 15-45 минут
+        let baseInterval = (15 + Math.random() * 30) * 60 * 1000;
+        
+        // Если сейчас "плохое" время, откладываем до следующего хорошего времени
+        if (!goodHours.includes(currentHour)) {
+            let nextGoodHour;
+            if (currentHour < 8) {
+                nextGoodHour = 8; // До утра
+            } else if (currentHour > 21) {
+                nextGoodHour = 8 + 24; // До завтра
+            } else {
+                nextGoodHour = 14; // После обеда
+            }
+            
+            const hoursUntilGoodTime = nextGoodHour - currentHour;
+            const delayUntilGoodTime = hoursUntilGoodTime * 60 * 60 * 1000;
+            
+            console.log(`⏰ Плохое время! Откладываем на ${hoursUntilGoodTime} часов до ${nextGoodHour % 24}:00`);
+            
+            return delayUntilGoodTime + baseInterval;
+        }
+        
+        // Увеличиваем интервалы в выходные
+        const weekendMultiplier = isWeekend ? 1.5 : 1;
+        
+        // Добавляем случайность ±50%
+        const randomness = 0.5 + Math.random();
+        
+        const finalInterval = Math.floor(baseInterval * weekendMultiplier * randomness);
+        
+        console.log(`⏱️ Рассчитан интервал: ${Math.round(finalInterval / (60 * 1000))} минут`);
+        
+        return finalInterval;
+    }
+
+    // Проверка статуса группы перед отправкой
+    async checkGroupStatus(group, telegramClientAPI) {
+        try {
+            if (!telegramClientAPI || !telegramClientAPI.client) {
+                return { canSend: false, reason: 'Нет подключения к Telegram' };
+            }
+
+            console.log(`Проверяем статус группы: ${group.name}`);
+
+            // Пытаемся получить информацию о группе
+            const entity = await telegramClientAPI.client.getEntity(group.id);
+            
+            if (!entity) {
+                return { canSend: false, reason: 'Группа не найдена' };
+            }
+
+            // Проверяем, не заблокированы ли мы
+            if (entity.left) {
+                return { canSend: false, reason: 'Мы исключены из группы' };
+            }
+
+            // Проверяем права на отправку сообщений
+            if (entity.defaultBannedRights && entity.defaultBannedRights.sendMessages) {
+                return { canSend: false, reason: 'Нет прав на отправку сообщений' };
+            }
+
+            // Проверяем активность группы (есть ли новые сообщения за последние 7 дней)
+            try {
+                const messages = await telegramClientAPI.client.getMessages(entity, { limit: 10 });
+                
+                if (messages.length === 0) {
+                    return { canSend: true, reason: 'Группа пустая, но доступна', warning: true };
+                }
+
+                const lastMessage = messages[0];
+                const lastMessageDate = new Date(lastMessage.date * 1000);
+                const daysSinceLastMessage = (Date.now() - lastMessageDate.getTime()) / (1000 * 60 * 60 * 24);
+
+                if (daysSinceLastMessage > 30) {
+                    return { canSend: true, reason: 'Группа неактивная (30+ дней без сообщений)', warning: true };
+                }
+
+                return { canSend: true, reason: 'Группа активна и доступна' };
+
+            } catch (messagesError) {
+                console.log(`Не удалось проверить сообщения в ${group.name}:`, messagesError.message);
+                return { canSend: true, reason: 'Группа доступна (не удалось проверить активность)', warning: true };
+            }
+
+        } catch (error) {
+            console.error(`Ошибка проверки группы ${group.name}:`, error.message);
+            
+            // Если группа не найдена или нет доступа
+            if (error.message.includes('No entity') || error.message.includes('CHANNEL_INVALID')) {
+                return { canSend: false, reason: 'Группа недоступна или удалена' };
+            }
+            
+            if (error.message.includes('CHAT_ADMIN_REQUIRED')) {
+                return { canSend: false, reason: 'Нет прав доступа к группе' };
+            }
+
+            // В остальных случаях разрешаем отправку
+            return { canSend: true, reason: 'Неизвестный статус, пробуем отправить', warning: true };
+        }
     }
 }
 

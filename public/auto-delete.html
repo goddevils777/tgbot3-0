@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Автоудаление сообщений - TELEGRAM MANAGER AI</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles/header.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header вставится здесь автоматически -->
+        
+<div class="auto-delete-setup">
+    <h2>⏰ Первый контакт через автоудаление</h2>
+    
+    <div class="brief-explanation">
+        <div class="how-it-works">
+            <span class="icon">💡</span>
+            <div class="text">
+                <strong>Как работает:</strong> Установка таймера автоудаления побуждает людей написать первыми из любопытства. 
+                Это безопасная альтернатива прямым рассылкам, которые блокирует Telegram.
+            </div>
+        </div>
+    </div>
+    
+            <div class="participants-section">
+                <h3>📝 Список пользователей</h3>
+            <textarea id="usersList" placeholder="
+Примеры:
+@username
+https://t.me/username  
+user_id_123
++380501234567
+
+# Это комментарий (будет пропущен)" rows="17"></textarea>
+                <div class="participants-counter">
+                    <span id="usersCount">Пользователей: 0</span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>⚙️ Настройки</h3>
+                
+                <div class="timer-settings">
+                    <div class="input-group">
+                        <label for="deleteTimer">Время автоудаления:</label>
+                        <select id="deleteTimer">
+                            <option value="1day">📅 1 день</option>
+                            <option value="1week">📅 1 неделя</option>
+                            <option value="1month">📅 1 месяц</option>
+                            <option value="disable">🚫 Отключить автоудаление</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="schedule-settings">
+                    <h4>📅 Расписание запуска</h4>
+                    <div class="schedule-inputs">
+                        <div class="input-group">
+                            <label for="startDate">Дата начала:</label>
+                            <input type="date" id="startDate">
+                        </div>
+                        <div class="input-group">
+                            <label for="startTime">Время начала:</label>
+                            <input type="time" id="startTime">
+                        </div>
+                    </div>
+                    <div class="smart-info">
+                        <div class="info-card">
+                            <span class="info-icon">🤖</span>
+                            <div class="info-text">
+                                <strong>Умная система</strong><br>
+                                Автоматически использует безопасные интервалы 15-45 минут между операциями и избегает ночных часов для защиты от блокировок
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="calculation-section">
+                <h3>📊 Расчет выполнения</h3>
+                <div id="calculationResult" class="calculation-result">
+                    Заполните данные для расчета времени выполнения
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="createAutoDeleteTask" class="start-btn">🚀 Запустить настройку автоудаления</button>
+            </div>
+        </div>
+        
+        <div class="auto-delete-tasks">
+            <h2>📋 Активные задания автоудаления</h2>
+            <div id="autoDeleteTasksList"></div>
+        </div>
+    </div>
+
+    <!-- Подключение компонента шапки -->
+    <script src="components/header.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initHeader('⏰ Автоудаление сообщений', 'auto-delete');
+        });
+    </script>
+    
+    <link rel="stylesheet" href="styles/notifications.css">
+    <script src="components/notifications.js"></script>
+    <script src="auto-delete.js"></script>
+</body>
+</html>
