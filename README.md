@@ -13,22 +13,22 @@
 
 ---
 <p align="center">
-  <a href="image/1.png?raw=true" target="_blank">
+  <a href="https://github.com/goddevils777/tgbot3-0/blob/main/image/1.png" target="_blank">
     <img src="image/1.png" width="250">
   </a>
-  <a href="image/2.png?raw=true" target="_blank">
+  <a href="https://github.com/goddevils777/tgbot3-0/blob/main/image/2.png" target="_blank">
     <img src="image/2.png" width="250">
   </a>
-  <a href="image/3.png?raw=true" target="_blank">
+  <a href="https://github.com/goddevils777/tgbot3-0/blob/main/image/3.png" target="_blank">
     <img src="image/3.png" width="250">
   </a>
-  <a href="image/4.png?raw=true" target="_blank">
+  <a href="https://github.com/goddevils777/tgbot3-0/blob/main/image/4.png" target="_blank">
     <img src="image/4.png" width="250">
   </a>
-  <a href="image/5.png?raw=true" target="_blank">
+  <a href="https://github.com/goddevils777/tgbot3-0/blob/main/image/5.png" target="_blank">
     <img src="image/5.png" width="250">
   </a>
-  <a href="image/6.png?raw=true" target="_blank">
+  <a href="https://github.com/goddevils777/tgbot3-0/blob/main/image/6.png" target="_blank">
     <img src="image/6.png" width="250">
   </a>
 </p>
