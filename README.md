@@ -12,6 +12,15 @@
 - **Создание веб-приложений и панелей управления**
 
 ---
+[<img src="image/1.png" width="200"/>](image/1.png?raw=true)
+[<img src="image/2.png" width="200"/>](image/2.png?raw=true)
+
+[<img src="image/3.png" width="200"/>](image/3.png?raw=true)
+
+[<img src="image/4.png" width="200"/>](image/4.png?raw=true)
+[<img src="image/5.png" width="200"/>](image/5.png?raw=true)
+[<img src="image/6.png" width="200"/>](image/6.png?raw=true)
+
 
 [<img src="image/1.png" width="200"/>](image/1.png)
 [<img src="image/2.png" width="200"/>](image/2.png)
