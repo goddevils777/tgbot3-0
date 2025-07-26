@@ -234,6 +234,8 @@ function displayResults() {
 }
 
 
+
+
 // Функция для отображения ключевиков в результатах
 function displaySearchKeywords() {
     // Добавляем блок с ключевиками в начало результатов
@@ -292,7 +294,7 @@ function displayTelegramLinks() {
                 </div>
                 <div class="link-actions">
                     <button onclick="openVideo('${link.videoId}')" class="watch-btn">🎬 Видео</button>
-                    <button onclick="checkLinkValidity('${link.telegramLink}')" class="check-btn">✅ Проверить</button>
+                    ${generateCheckButton(link.telegramLink)}
                 </div>
             </div>
             <div class="video-source">
@@ -302,15 +304,82 @@ function displayTelegramLinks() {
     `).join('');
 
     // Добавляем кнопки и предупреждение
+        // В конце функции displayTelegramLinks, после export-section добавь:
         linksList.innerHTML += `
             <div class="export-section">
                 <div class="warning-note">
                     ⚠️ <strong>Важно:</strong> Invite-ссылки могут истекать в любой момент. 
                     Проверка показывает только доступность на момент запроса.
                 </div>
+                <div class="status-management">
+                    <button onclick="viewSavedStatuses()" class="small-btn">📊 Статистика проверок</button>
+                    <button onclick="clearAllStatuses()" class="small-btn">🗑️ Очистить статусы</button>
+                </div>
             </div>
         `;
 
+}
+
+// Генерация кнопки проверки с учетом сохраненного статуса
+function generateCheckButton(telegramLink) {
+    const savedStatus = getGroupStatus(telegramLink);
+    
+    if (savedStatus) {
+        if (savedStatus.status === 'valid') {
+            return `<button onclick="resetLinkStatus('${telegramLink}')" class="check-btn status-available" style="background: #28a745;">✅ Доступна</button>`;
+        } else {
+            return `<button onclick="resetLinkStatus('${telegramLink}')" class="check-btn status-unavailable" style="background: #dc3545;">❌ Недоступна</button>`;
+        }
+    } else {
+        return `<button onclick="checkLinkValidity('${telegramLink}')" class="check-btn">✅ Проверить</button>`;
+    }
+}
+
+// Также добавь функцию очистки статусов (для админки)
+function clearAllStatuses() {
+    localStorage.removeItem('groupStatuses');
+    notify.success('Все статусы очищены');
+    
+    // Перерисовываем ссылки
+    if (currentResults && currentResults.telegramLinks) {
+        displayTelegramLinks();
+    }
+}
+
+// Функция для просмотра всех сохраненных статусов
+function viewSavedStatuses() {
+    const savedStatuses = JSON.parse(localStorage.getItem('groupStatuses') || '{}');
+    const statusCount = Object.keys(savedStatuses).length;
+    
+    if (statusCount === 0) {
+        notify.info('Нет сохраненных статусов');
+        return;
+    }
+    
+    const validCount = Object.values(savedStatuses).filter(s => s.status === 'valid').length;
+    const invalidCount = statusCount - validCount;
+    
+    notify.info(`Сохранено статусов: ${statusCount} (✅ ${validCount} доступных, ❌ ${invalidCount} недоступных)`);
+}
+
+// Сброс статуса ссылки (возврат к "Проверить")
+function resetLinkStatus(telegramLink) {
+    // Удаляем сохраненный статус
+    const savedStatuses = JSON.parse(localStorage.getItem('groupStatuses') || '{}');
+    delete savedStatuses[telegramLink];
+    localStorage.setItem('groupStatuses', JSON.stringify(savedStatuses));
+    
+    // Находим кнопку и обновляем её
+    const button = document.querySelector(`button[onclick*="${telegramLink}"]`);
+    if (button) {
+        button.textContent = '✅ Проверить';
+        button.style.background = '';
+        button.disabled = false;
+        button.className = 'check-btn';
+        button.onclick = () => checkLinkValidity(telegramLink);
+    }
+    
+    notify.info('Статус сброшен, можно проверить заново');
 }
 
 // Переключение табов
@@ -442,14 +511,38 @@ function copyToClipboard(text) {
     });
 }
 
-// Проверка валидности одной ссылки
-async function checkLinkValidity(telegramLink) {
+// Проверка валидности Telegram ссылки с сохранением статуса
+async function checkLinkValidity(telegramLink, event = null) {
+    const button = event ? event.target : document.querySelector(`button[onclick*="${telegramLink}"]`);
+    
+    if (!button) {
+        console.error('Кнопка не найдена для ссылки:', telegramLink);
+        return;
+    }
+    
+    const originalText = button.textContent;
+    
+    // Проверяем сохраненный статус
+    const savedStatus = getGroupStatus(telegramLink);
+    if (savedStatus) {
+        if (savedStatus.status === 'valid') {
+            button.textContent = '✅ Доступна';
+            button.style.background = '#28a745';
+            button.onclick = () => resetLinkStatus(telegramLink); // Делаем кликабельной
+            notify.success('Статус загружен из сохраненных данных (нажмите для сброса)');
+        } else {
+            button.textContent = '❌ Недоступна';
+            button.style.background = '#dc3545';
+            button.onclick = () => resetLinkStatus(telegramLink); // Делаем кликабельной
+            notify.warning('Статус загружен: недоступна (нажмите для сброса)');
+        }
+        return;
+    }
+    
+    button.textContent = 'Проверяю...';
+    button.disabled = true;
+    
     try {
-        const button = event.target;
-        const originalText = button.textContent;
-        button.textContent = '⏳ Проверяем...';
-        button.disabled = true;
-        
         const response = await fetch('/api/check-telegram-link', {
             method: 'POST',
             headers: {
@@ -461,78 +554,51 @@ async function checkLinkValidity(telegramLink) {
         const data = await response.json();
         
         if (data.valid) {
+            // Сохраняем положительный статус
+            saveGroupStatus(telegramLink, 'valid');
+            
             button.textContent = '✅ Доступна';
             button.style.background = '#28a745';
+            button.disabled = false;
+            button.onclick = () => resetLinkStatus(telegramLink); // Делаем кликабельной для сброса
             
-            // Разные сообщения для разных типов ссылок
-            if (data.type === 'invite') {
-                notify.info('Ссылка доступна, но invite-ссылки могут истекать. Проверьте сами!');
+            if (telegramLink.includes('joinchat/') || telegramLink.includes('+')) {
+                notify.info('Invite-ссылка работает! Нажмите кнопку для повторной проверки');
             } else {
-                notify.success('Публичный канал доступен!');
+                notify.success('Публичный канал доступен! Нажмите для сброса статуса');
             }
         } else {
+            // Сохраняем отрицательный статус
+            saveGroupStatus(telegramLink, 'invalid');
+            
             button.textContent = '❌ Недоступна';
             button.style.background = '#dc3545';
-            notify.warning('Ссылка недоступна или истекла');
-        }
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.background = '';
             button.disabled = false;
-        }, 3000);
+            button.onclick = () => resetLinkStatus(telegramLink); // Делаем кликабельной для сброса
+            notify.warning('Ссылка недоступна. Нажмите для повторной проверки');
+        }
         
     } catch (error) {
         console.error('Ошибка проверки ссылки:', error);
         notify.error('Ошибка проверки');
         
-        const button = event.target;
         button.textContent = '❌ Ошибка';
         button.disabled = false;
     }
 }
 
-// Проверка всех ссылок сразу
-async function checkAllLinks() {
-    if (!currentResults.telegramLinks || currentResults.telegramLinks.length === 0) {
-        notify.warning('Нет ссылок для проверки');
-        return;
-    }
-    
-    notify.info(`Проверяем ${currentResults.telegramLinks.length} ссылок...`);
-    
-    let validCount = 0;
-    let invalidCount = 0;
-    
-    for (const link of currentResults.telegramLinks) {
-        try {
-            const response = await fetch('/api/check-telegram-link', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ link: link.telegramLink })
-            });
-            
-            const data = await response.json();
-            
-            if (data.valid) {
-                validCount++;
-                link.isValid = true;
-            } else {
-                invalidCount++;
-                link.isValid = false;
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-        } catch (error) {
-            console.error('Ошибка проверки:', error);
-            invalidCount++;
-            link.isValid = false;
-        }
-    }
-    
-    notify.success(`Проверка завершена: ${validCount} работают, ${invalidCount} не работают`);
-    displayTelegramLinks();
+// Добавляем функции для работы с localStorage
+function saveGroupStatus(groupId, status) {
+    const savedStatuses = JSON.parse(localStorage.getItem('groupStatuses') || '{}');
+    savedStatuses[groupId] = {
+        status: status,
+        checkedAt: new Date().toISOString()
+    };
+    localStorage.setItem('groupStatuses', JSON.stringify(savedStatuses));
 }
+
+function getGroupStatus(groupId) {
+    const savedStatuses = JSON.parse(localStorage.getItem('groupStatuses') || '{}');
+    return savedStatuses[groupId] || null;
+}
+
