@@ -90,6 +90,9 @@ const app = express();
 const http = require('http');
 const { Server } = require('socket.io');
 
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 // Создаем HTTP сервер и WebSocket
 const server = http.createServer(app);
 const io = new Server(server, {
