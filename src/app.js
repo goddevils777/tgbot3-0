@@ -307,6 +307,34 @@ function updateKeywordsDisplay() {
     `).join('');
 }
 
+
+// Функция сохранения информации о последнем поиске
+function saveLastSearchInfo() {
+        console.log('=== СОХРАНЕНИЕ ИНФОРМАЦИИ О ПОИСКЕ ===');
+    
+    // Проверяем что возвращает getSelectedGroups
+    const selectedGroups = getSelectedGroups();
+    console.log('getSelectedGroups() возвращает:', selectedGroups);
+    
+    // Также проверим прямо через DOM
+    const checkboxes = document.querySelectorAll('.group-item input[type="checkbox"]:checked');
+    console.log('Найдено выбранных чекбоксов:', checkboxes.length);
+    
+    checkboxes.forEach((checkbox, index) => {
+        const label = checkbox.nextElementSibling;
+        const groupName = label.querySelector('.group-name').textContent;
+        console.log(`Группа ${index + 1}:`, groupName, 'ID:', checkbox.value);
+    });
+    
+    const lastSearchInfo = {
+        keywords: keywords,
+        selectedGroups: selectedGroups,
+        timestamp: Date.now()
+    };
+    localStorage.setItem('lastSearchInfo', JSON.stringify(lastSearchInfo));
+    console.log('Сохранена информация о поиске:', lastSearchInfo);
+}
+
 // Сохранение ключевых слов
 function saveKeywords() {
     localStorage.setItem('searchKeywords', JSON.stringify(keywords));
@@ -359,6 +387,21 @@ function loadLastResults() {
 
     if (saveButton) saveButton.style.display = 'block';
     if (clearButton) clearButton.style.display = 'block';
+}
+
+function saveSearchState() {
+    const selectedGroups = getSelectedGroups(); // Получаем группы прямо сейчас
+    
+    const searchState = {
+        isSearching: true,
+        searchStartTime: searchStartTime || Date.now(),
+        totalGroups: currentSearchProgress ? currentSearchProgress.totalGroups : 0,
+        processedGroups: currentSearchProgress ? currentSearchProgress.processedGroups : 0,
+        keywords: keywords,
+        selectedGroups: selectedGroups
+    };
+    console.log('Сохраняем состояние поиска:', searchState);
+    localStorage.setItem('searchState', JSON.stringify(searchState));
 }
 
 // Сохранение настроек
@@ -438,9 +481,10 @@ searchBtn.addEventListener('click', async () => {
     `;
 
     try {
-
-        notify.success('Поиск запущен! Ожидайте результаты ниже ...');
-        saveSearchState(); 
+        notify.success('Поиск запущен! Ожидайте результаты...');
+        
+        saveLastSearchInfo(); // Эта строка должна быть здесь
+        saveSearchState();
         // Запускаем поиск на сервере (асинхронно)
         const response = await fetch('/api/search', {
             method: 'POST',
@@ -899,58 +943,79 @@ function showClearButton() {
 }
 
 
-// Функция для сохранения результатов поиска в историю
-function saveSearchToHistory() {
+async function saveSearchToHistory() {
+    console.log('=== НАЧАЛО СОХРАНЕНИЯ В ИСТОРИЮ ===');
+    console.log('lastSearchResults:', window.lastSearchResults?.length);
+    
     if (!window.lastSearchResults || window.lastSearchResults.length === 0) {
         notify.warning('Нет результатов для сохранения');
         return;
     }
     
-    // Создаем объект истории
-    if (!window.historyManager) {
-        window.historyManager = {
-            addToHistory: function(type, data) {
-                const history = JSON.parse(localStorage.getItem('telegram_bot_history') || '{"search":[],"livestream":[],"autosearch":[]}');
-                const record = {
-                    id: Date.now().toString(),
-                    timestamp: new Date().toISOString(),
-                    ...data
-                };
-                history[type].unshift(record);
-                if (history[type].length > 50) {
-                    history[type] = history[type].slice(0, 50);
-                }
-                localStorage.setItem('telegram_bot_history', JSON.stringify(history));
-                return record.id;
-            }
-        };
+    // Получаем текущие ключевые слова
+    const currentKeywords = keywords;
+    
+    // Получаем выбранные группы из информации о последнем поиске
+    let selectedGroups = [];
+    const lastSearchInfo = JSON.parse(localStorage.getItem('lastSearchInfo') || '{}');
+    if (lastSearchInfo.selectedGroups && lastSearchInfo.selectedGroups.length > 0) {
+        selectedGroups = lastSearchInfo.selectedGroups;
     }
     
-    // Получаем текущие параметры поиска
-    const keywords = Array.from(document.querySelectorAll('.keyword-tag')).map(tag => 
-        tag.textContent.replace('×', '').trim()
-    );
+    console.log('Сохраняем группы:', selectedGroups);
     
-    const selectedGroups = Array.from(document.querySelectorAll('#groupsList input:checked')).length;
-    
-    // Сохраняем в историю
+    // Подготавливаем данные для сохранения
     const historyData = {
-        keywords: keywords,
-        groupsCount: selectedGroups,
+        keywords: currentKeywords,
+        groupsCount: selectedGroups.length,
+        groupsList: selectedGroups,
         messagesCount: window.lastSearchResults.length,
-        messages: window.lastSearchResults,
+        messages: window.lastSearchResults, // Полный массив сообщений
         searchParams: {
             messageCount: document.getElementById('messageCount').value
         }
     };
     
-    const savedId = window.historyManager.addToHistory('search', historyData);
+    try {
+        // Отправляем на сервер
+        const response = await fetch('/api/save-search-history', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ historyData })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Сохраняем краткую информацию в localStorage
+            const localHistory = JSON.parse(localStorage.getItem('telegram_bot_history') || '[]');
+            localHistory.unshift(data.briefHistory);
+            
+            // Ограничиваем количество записей в localStorage
+            const trimmedHistory = localHistory.slice(0, 20);
+            localStorage.setItem('telegram_bot_history', JSON.stringify(trimmedHistory));
+            
+            // Если пользователь на странице истории - обновляем отображение
+            if (window.historyManager) {
+                window.historyManager.loadHistory();
+            }
+            
+            notify.success(`Результаты сохранены в базу данных!\nНайдено: ${window.lastSearchResults.length} сообщений`);
+            console.log('История сохранена с ID:', data.historyId);
+        } else {
+            notify.error(`Ошибка сохранения: ${data.error}`);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка сохранения истории:', error);
+        notify.error(`Ошибка соединения: ${error.message}`);
+    }
     
-    // Показываем уведомление
-    notify.success(`Результаты поиска сохранены в историю!\nНайдено: ${window.lastSearchResults.length} сообщений`);
-    
-    console.log('Результаты поиска сохранены с ID:', savedId);
+    console.log('=== КОНЕЦ СОХРАНЕНИЯ В ИСТОРИЮ ===');
 }
+
 
 // Функция обновления статуса сессии на странице
 function updateSessionStatus(isActive) {
@@ -1102,18 +1167,7 @@ function toggleGroupStatus(groupId) {
     notify.success(`Статус группы изменен на: ${newStatus}`);
 }
 
-function saveSearchState() {
-    const searchState = {
-        isSearching: true, // Всегда true при сохранении
-        searchStartTime: searchStartTime || Date.now(),
-        totalGroups: currentSearchProgress ? currentSearchProgress.totalGroups : 0,
-        processedGroups: currentSearchProgress ? currentSearchProgress.processedGroups : 0,
-        keywords: keywords,
-        selectedGroups: getSelectedGroups()
-    };
-    console.log('Сохраняем состояние поиска:', searchState);
-    localStorage.setItem('searchState', JSON.stringify(searchState));
-}
+
 
 
 async function loadSearchState() {
@@ -1201,6 +1255,43 @@ function stopCurrentSearch() {
     });
     
     notify.success('Поиск остановлен');
+}
+
+// Функция для отображения результатов из истории
+function loadHistoryResults() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('showHistory') === 'true') {
+        const historyData = JSON.parse(sessionStorage.getItem('historyResults') || '{}');
+        
+        if (historyData.messages && historyData.messages.length > 0) {
+            console.log('Загружаем результаты из истории:', historyData.messagesCount, 'сообщений');
+            
+            // Восстанавливаем ключевые слова
+            if (historyData.keywords) {
+                keywords = historyData.keywords;
+                updateKeywordsDisplay();
+            }
+            
+            // Отображаем результаты
+            window.lastSearchResults = historyData.messages;
+            displayResults(historyData.messages, historyData.keywords);
+            
+            // Показываем кнопки сохранения
+            const saveButton = document.getElementById('saveToHistory');
+            const clearButton = document.getElementById('clearResultsBtn');
+            if (saveButton) saveButton.style.display = 'block';
+            if (clearButton) clearButton.style.display = 'block';
+            
+            // Очищаем данные из sessionStorage
+            sessionStorage.removeItem('historyResults');
+            
+            // Очищаем URL от параметра
+            window.history.replaceState({}, document.title, '/');
+            
+            notify.success(`Загружена история поиска: ${historyData.messagesCount} сообщений`);
+        }
+    }
 }
 
 function clearSearchState() {

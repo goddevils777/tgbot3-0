@@ -5,8 +5,8 @@ class HistoryDetailManager {
         this.init();
     }
 
-    init() {
-        this.loadRecordDetails();
+    async init() {
+        await this.loadRecordDetails();
     }
 
     // Получение параметров из URL
@@ -19,24 +19,55 @@ class HistoryDetailManager {
     }
 
     // Загрузка деталей записи
-    loadRecordDetails() {
-        const { type, id } = this.getUrlParams();
-        
-        if (!type || !id) {
-            this.showError('Некорректные параметры');
-            return;
-        }
-
-        const history = this.getHistory();
-        const record = history[type]?.find(item => item.id === id);
-
-        if (!record) {
-            this.showError('Запись не найдена');
-            return;
-        }
-
-        this.displayRecordDetails(record, type);
+   // Загрузка деталей записи
+async loadRecordDetails() {
+    const { type, id } = this.getUrlParams();
+    
+    if (!type || !id) {
+        this.showError('Некорректные параметры');
+        return;
     }
+
+    // Сначала пытаемся загрузить из sessionStorage (при переходе с истории)
+    const sessionData = sessionStorage.getItem('historyDetailData');
+    if (sessionData) {
+        const record = JSON.parse(sessionData);
+        sessionStorage.removeItem('historyDetailData');
+        this.displayRecordDetails(record, type);
+        return;
+    }
+
+    // Если нет данных в sessionStorage - загружаем с сервера (при прямом заходе или обновлении)
+    if (type === 'search') {
+        try {
+            const response = await fetch(`/api/get-search-history/${id}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.displayRecordDetails(data.history, type);
+                return;
+            } else {
+                this.showError(`Ошибка загрузки с сервера: ${data.error}`);
+                return;
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки с сервера:', error);
+            this.showError('Ошибка соединения с сервером');
+            return;
+        }
+    }
+
+    // Fallback к localStorage для старых записей других типов
+    const history = this.getHistory();
+    const record = history[type]?.find(item => item.id === id);
+
+    if (!record) {
+        this.showError('Запись не найдена');
+        return;
+    }
+
+    this.displayRecordDetails(record, type);
+}
 
     // Получение истории из localStorage
     getHistory() {
@@ -119,28 +150,48 @@ class HistoryDetailManager {
     }
 
     // Отображение деталей поиска сообщений
+// Отображение деталей поиска сообщений
+displaySearchDetails(record, contentTitle, detailData) {
+    contentTitle.textContent = `Найденные сообщения (${record.messagesCount || 0})`;
+    
+    if (!record.messages || record.messages.length === 0) {
+        detailData.innerHTML = '<p class="no-data">Сообщения не сохранены</p>';
+        return;
+    }
 
-    displaySearchDetails(record, contentTitle, detailData) {
-        contentTitle.textContent = `Найденные сообщения (${record.messagesCount || 0})`;
+    // Сохраняем сообщения глобально для копирования никнеймов
+    window.currentMessages = record.messages;
+
+    // Кнопка копирования ВВЕРХУ
+    const copyButtonHtml = `
+        <div class="detail-actions-top">
+            <button onclick="copyNicknamesFromDetail()" class="btn-copy-nicknames">
+                📋 Скопировать никнеймы (${this.getUniqueNicknames(record.messages).length})
+            </button>
+        </div>
+    `;
+
+    const messagesHtml = record.messages.map((message, index) => {
+        let highlightedText = message.text || 'Текст недоступен';
         
-        if (!record.messages || record.messages.length === 0) {
-            detailData.innerHTML = '<p class="no-data">Сообщения не сохранены</p>';
-            return;
+        // Подсвечиваем ключевые слова
+        if (record.keywords && record.keywords.length > 0) {
+            record.keywords.forEach(keyword => {
+                const keywordLower = keyword.toLowerCase().trim();
+                
+                // Для фраз из нескольких слов ищем точное совпадение
+                if (keywordLower.includes(' ')) {
+                    const regex = new RegExp(`(${keywordLower})`, 'gi');
+                    highlightedText = highlightedText.replace(regex, '<mark class="keyword-highlight">$1</mark>');
+                } else {
+                    // Для одного слова ищем как отдельное слово
+                    const regex = new RegExp(`(^|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])(${keywordLower})($|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])`, 'gi');
+                    highlightedText = highlightedText.replace(regex, '$1<mark class="keyword-highlight">$2</mark>$3');
+                }
+            });
         }
-
-        // Получаем уникальные никнеймы
-        const uniqueNicknames = this.getUniqueNicknames(record.messages);
         
-        // Добавляем кнопку копирования никнеймов
-        const copyButton = `
-            <div class="detail-actions">
-                <button onclick="copyNicknamesFromDetail()" class="copy-nicknames-btn">
-                    👥 Скопировать никнеймы (${uniqueNicknames.length})
-                </button>
-            </div>
-        `;
-
-        const messagesHtml = record.messages.map((message, index) => `
+        return `
             <div class="message-detail-item">
                 <div class="message-detail-header">
                     <span class="message-number">#${index + 1}</span>
@@ -148,16 +199,14 @@ class HistoryDetailManager {
                     <span class="message-sender">${message.sender || 'Неизвестный отправитель'}</span>
                     <span class="message-date">${message.date || 'Неизвестная дата'}</span>
                 </div>
-                <div class="message-detail-text">${message.text || 'Текст недоступен'}</div>
-                ${message.link ? `<div><a href="${message.link}" target="_blank" class="message-link">Открыть в Telegram</a></div>` : ''}
+                <div class="message-detail-text">${highlightedText}</div>
+                ${message.link ? `<div class="telegram-link-container"><a href="${message.link}" target="_blank" class="btn-telegram-link">Открыть в Telegram</a></div>` : ''}
             </div>
-        `).join('');
+        `;
+    }).join('');
 
-        detailData.innerHTML = copyButton + messagesHtml;
-        
-        // Сохраняем сообщения для копирования
-        window.currentMessages = record.messages;
-    }
+    detailData.innerHTML = copyButtonHtml + messagesHtml;
+}
 
     // Отображение деталей Live Stream
     displayLivestreamDetails(record, contentTitle, detailData) {

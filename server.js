@@ -2321,6 +2321,87 @@ app.post('/api/stop-search', (req, res) => {
     }
 });
 
+// API для сохранения истории поиска
+app.post('/api/save-search-history', (req, res) => {
+    try {
+        const { historyData } = req.body;
+        
+        if (!historyData) {
+            return res.json({ success: false, error: 'Нет данных для сохранения' });
+        }
+        
+        // Создаем папку для истории пользователя
+        const userHistoryDir = `./history/${req.userId}`;
+        if (!fs.existsSync('./history')) {
+            fs.mkdirSync('./history');
+        }
+        if (!fs.existsSync(userHistoryDir)) {
+            fs.mkdirSync(userHistoryDir);
+        }
+        
+        // Создаем файл с историей
+        const historyId = Date.now().toString();
+        const historyFile = path.join(userHistoryDir, `search_${historyId}.json`);
+        
+        const historyRecord = {
+            id: historyId,
+            type: 'search',
+            timestamp: Date.now(),
+            userId: req.userId,
+            ...historyData
+        };
+        
+        fs.writeFileSync(historyFile, JSON.stringify(historyRecord, null, 2));
+        
+        // Также сохраняем краткую информацию в localStorage (без сообщений)
+        const briefHistory = {
+            id: historyId,
+            type: 'search',
+            timestamp: Date.now(),
+            keywords: historyData.keywords,
+            groupsCount: historyData.groupsCount,
+            groupsList: historyData.groupsList,
+            messagesCount: historyData.messagesCount,
+            searchParams: historyData.searchParams
+        };
+        
+        res.json({ 
+            success: true, 
+            historyId: historyId,
+            briefHistory: briefHistory,
+            message: 'История сохранена в базе данных'
+        });
+        
+    } catch (error) {
+        console.error('Ошибка сохранения истории:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// API для получения полной истории по ID
+app.get('/api/get-search-history/:historyId', (req, res) => {
+    try {
+        const { historyId } = req.params;
+        const userHistoryDir = `./history/${req.userId}`;
+        const historyFile = path.join(userHistoryDir, `search_${historyId}.json`);
+        
+        if (!fs.existsSync(historyFile)) {
+            return res.json({ success: false, error: 'История не найдена' });
+        }
+        
+        const historyData = JSON.parse(fs.readFileSync(historyFile, 'utf8'));
+        
+        res.json({ 
+            success: true, 
+            history: historyData
+        });
+        
+    } catch (error) {
+        console.error('Ошибка получения истории:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
 server.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
 });

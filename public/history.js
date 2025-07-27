@@ -6,23 +6,33 @@ class HistoryManager {
     }
 
     init() {
+        console.log('Инициализация HistoryManager');
         this.loadHistory();
         this.setupEventListeners();
     }
 
-    // Получение истории из localStorage
     getHistory() {
-        try {
-            const history = localStorage.getItem(this.storageKey);
-            return history ? JSON.parse(history) : {
-                search: [],
-                livestream: [],
-                autosearch: []
-            };
-        } catch (error) {
-            console.error('Ошибка загрузки истории:', error);
-            return { search: [], livestream: [], autosearch: [] };
+        let allHistory = JSON.parse(localStorage.getItem('telegram_bot_history') || '[]');
+        
+        // Если это старый формат объекта - конвертируем в массив
+        if (!Array.isArray(allHistory) && allHistory.search) {
+            console.log('Конвертируем старый формат истории');
+            const converted = [
+                ...allHistory.search || [],
+                ...allHistory.livestream || [],
+                ...allHistory.autosearch || []
+            ];
+            localStorage.setItem('telegram_bot_history', JSON.stringify(converted));
+            allHistory = converted;
         }
+        
+        // Если всё ещё не массив - создаём пустой
+        if (!Array.isArray(allHistory)) {
+            allHistory = [];
+            localStorage.setItem('telegram_bot_history', JSON.stringify([]));
+        }
+        
+        return allHistory;
     }
 
     // Сохранение истории в localStorage
@@ -39,53 +49,70 @@ class HistoryManager {
         const history = this.getHistory();
         const record = {
             id: Date.now().toString(),
-            timestamp: new Date().toISOString(),
+            type: type,
+            timestamp: Date.now(),
             ...data
         };
         
-        history[type].unshift(record); // Добавляем в начало
+        history.unshift(record); // Добавляем в начало массива
         
-        // Ограничиваем количество записей (максимум 50 на тип)
-        if (history[type].length > 50) {
-            history[type] = history[type].slice(0, 50);
+        // Ограничиваем количество записей (максимум 50)
+        if (history.length > 50) {
+            history = history.slice(0, 50);
         }
         
-        this.saveHistory(history);
+        localStorage.setItem('telegram_bot_history', JSON.stringify(history));
         this.loadHistory(); // Обновляем отображение
         
         return record.id;
     }
 
-
     // Удаление записи из истории
     removeFromHistory(type, id) {
-        showConfirm('Удалить эту запись из истории?', () => {
-        
-            const history = this.getHistory();
-            history[type] = history[type].filter(item => item.id !== id);
-            this.saveHistory(history);
-            this.loadHistory(); // Обновляем отображение
-        });
+        if (confirm('Удалить эту запись из истории?')) {
+            let allHistory = this.getHistory();
+            const filteredHistory = allHistory.filter(item => item.id !== id);
+            localStorage.setItem('telegram_bot_history', JSON.stringify(filteredHistory));
+            this.loadHistory();
+        }
     }
 
-    // Добавить новый метод для обработки событий
+    // Настройка обработчиков событий
     setupEventListeners() {
-        // Только обработчик удаления, никаких переходов
-        document.addEventListener('click', (e) => {
+        console.log('=== Настройка обработчиков событий ===');
+        
+        document.addEventListener('click', async (e) => {
+            console.log('Клик зарегистрирован:', e.target);
+            
+            // Если клик по кнопке удаления - только удаляем
             if (e.target.classList.contains('btn-delete')) {
+                console.log('Клик по кнопке удаления');
                 e.stopPropagation();
                 e.preventDefault();
+                return; // onclick в HTML уже обрабатывает удаление
+            }
+            
+            // Если клик по карточке истории - показываем результаты
+            if (e.target.closest('.history-item')) {
+                console.log('Клик по карточке истории');
+                const historyItem = e.target.closest('.history-item');
+                const historyId = historyItem.dataset.id;
+                console.log('ID истории:', historyId);
                 
-                const type = e.target.dataset.type;
-                const id = e.target.dataset.id;
-                
-                if (confirm('Удалить эту запись из истории?')) {
-                    const history = this.getHistory();
-                    history[type] = history[type].filter(item => item.id !== id);
-                    this.saveHistory(history);
-                    this.loadHistory();
+                // Загружаем полную историю с сервера
+                try {
+                    const response = await fetch(`/api/get-search-history/${historyId}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.displayHistoryResults(data.history);
+                    } else {
+                        alert('Ошибка загрузки истории: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Ошибка загрузки истории:', error);
+                    alert('Ошибка соединения с сервером');
                 }
-                return false;
             }
         });
     }
@@ -93,24 +120,30 @@ class HistoryManager {
     // Загрузка и отображение истории
     loadHistory() {
         const history = this.getHistory();
+        console.log('Загружаем историю:', history.length, 'записей');
         
-        this.displaySearchHistory(history.search);
-        this.displayLivestreamHistory(history.livestream);
-        this.displayAutosearchHistory(history.autosearch);
+        this.displaySearchHistory(history);
+        this.displayLivestreamHistory(history);
+        this.displayAutosearchHistory(history);
     }
 
-
     // Отображение истории поиска
-    displaySearchHistory(items) {
+    displaySearchHistory(history) {
         const container = document.getElementById('searchHistory');
-        if (!container) return;
-
-        if (items.length === 0) {
-            container.innerHTML = '<p class="empty-history">История поиска пуста</p>';
+        
+        if (!history || !Array.isArray(history)) {
+            container.innerHTML = '<p>История поиска пуста</p>';
+            return;
+        }
+        
+        const searchHistory = history.filter(item => item.type === 'search');
+        
+        if (searchHistory.length === 0) {
+            container.innerHTML = '<p>История поиска пуста</p>';
             return;
         }
 
-        container.innerHTML = items.map(item => `
+        container.innerHTML = searchHistory.map(item => `
             <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
                 <div class="history-header">
                     <span class="history-title">Поиск: ${item.keywords?.join(', ') || 'Без ключевых слов'}</span>
@@ -118,7 +151,9 @@ class HistoryManager {
                 </div>
                 <div class="history-details">
                     <p><strong>Ключевые слова:</strong> ${item.keywords?.join(', ') || 'Не указаны'}</p>
-                    <p><strong>Групп выбрано:</strong> ${item.groupsCount || 0}</p>
+                    <p><strong>Группы:</strong> ${item.groupsList && item.groupsList.length > 0 
+                                ? item.groupsList.map(group => group.name).join(', ') 
+                                : `Выбрано групп: ${item.groupsCount || 0}`}</p>
                     <p><strong>Найдено сообщений:</strong> ${item.messagesCount || 0}</p>
                 </div>
                 <div class="history-actions">
@@ -129,17 +164,23 @@ class HistoryManager {
     }
 
     // Отображение истории Live Stream
-    displayLivestreamHistory(items) {
+    displayLivestreamHistory(history) {
         const container = document.getElementById('livestreamHistory');
-        if (!container) return;
-
-        if (items.length === 0) {
-            container.innerHTML = '<p class="empty-history">История Live Stream пуста</p>';
+        
+        if (!history || !Array.isArray(history)) {
+            container.innerHTML = '<p>История Live Stream пуста</p>';
+            return;
+        }
+        
+        const livestreamHistory = history.filter(item => item.type === 'livestream');
+        
+        if (livestreamHistory.length === 0) {
+            container.innerHTML = '<p>История Live Stream пуста</p>';
             return;
         }
 
-        container.innerHTML = items.map(item => `
-            <div class="history-item" data-id="${item.id}" onclick="viewDetails('livestream', '${item.id}')" style="cursor: pointer;">
+        container.innerHTML = livestreamHistory.map(item => `
+            <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
                 <div class="history-header">
                     <span class="history-title">Live Stream: ${item.channelName || 'Неизвестный канал'}</span>
                     <span class="history-date">${new Date(item.timestamp).toLocaleString('ru-RU')}</span>
@@ -156,17 +197,23 @@ class HistoryManager {
     }
 
     // Отображение истории автопоиска
-    displayAutosearchHistory(items) {
+    displayAutosearchHistory(history) {
         const container = document.getElementById('autosearchHistory');
-        if (!container) return;
-
-        if (items.length === 0) {
-            container.innerHTML = '<p class="empty-history">История автопоиска пуста</p>';
+        
+        if (!history || !Array.isArray(history)) {
+            container.innerHTML = '<p>История автопоиска пуста</p>';
+            return;
+        }
+        
+        const autosearchHistory = history.filter(item => item.type === 'autosearch');
+        
+        if (autosearchHistory.length === 0) {
+            container.innerHTML = '<p>История автопоиска пуста</p>';
             return;
         }
 
-        container.innerHTML = items.map(item => `
-            <div class="history-item" data-id="${item.id}" onclick="viewDetails('autosearch', '${item.id}')" style="cursor: pointer;">
+        container.innerHTML = autosearchHistory.map(item => `
+            <div class="history-item" data-id="${item.id}" style="cursor: pointer;">
                 <div class="history-header">
                     <span class="history-title">Автопоиск: ${item.keywords?.join(', ') || 'Без ключевых слов'}</span>
                     <span class="history-date">${new Date(item.timestamp).toLocaleString('ru-RU')}</span>
@@ -182,50 +229,17 @@ class HistoryManager {
         `).join('');
     }
 
-setupEventListeners() {
-        document.addEventListener('click', (e) => {
-            // Если клик по кнопке удаления - только удаляем
-            if (e.target.classList.contains('btn-delete')) {
-                e.stopPropagation();
-                e.preventDefault();
-                
-                const type = e.target.dataset.type;
-                const id = e.target.dataset.id;
-                
-                if (confirm('Удалить эту запись из истории?')) {
-                    const history = this.getHistory();
-                    history[type] = history[type].filter(item => item.id !== id);
-                    this.saveHistory(history);
-                    this.loadHistory();
-                }
-                return false;
-            }
-            
-            // Если клик НЕ по кнопке удаления и НЕ по actions контейнеру
-            if (!e.target.closest('.history-actions')) {
-                const historyItem = e.target.closest('.history-item');
-                if (historyItem) {
-                    const id = historyItem.dataset.id;
-                    const container = historyItem.closest('[id$="History"]');
-                    if (container) {
-                        const type = container.id.replace('History', '').toLowerCase();
-                        window.location.href = `history-detail.html?type=${type}&id=${id}`;
-                    }
-                }
-            }
-        });
-    }
-
-    // Обновить метод removeFromHistory (убрать confirm так как он уже в setupEventListeners)
-    removeFromHistory(type, id) {
-        const history = this.getHistory();
-        history[type] = history[type].filter(item => item.id !== id);
-        this.saveHistory(history);
-        this.loadHistory(); // Обновляем отображение
+    // Отображение результатов истории
+    // Отображение результатов истории
+    // Отображение результатов истории
+    displayHistoryResults(historyData) {
+        // Сохраняем полные данные для history-detail.html
+        sessionStorage.setItem('historyDetailData', JSON.stringify(historyData));
+        
+        // Переходим на страницу детального просмотра
+        window.location.href = `history-detail.html?type=search&id=${historyData.id}`;
     }
 }
-
-
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {

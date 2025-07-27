@@ -288,6 +288,30 @@ input::placeholder {
     color: white;
 }
 
+
+/* Простые стили для кнопки "Открыть в Telegram" */
+.telegram-link-container {
+    margin-top: 10px;
+    text-align: left;
+}
+
+.btn-telegram-link {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #0088cc;
+    color: white !important;
+    text-decoration: none !important;
+    border-radius: 4px;
+    font-size: 12px;
+    border: none;
+}
+
+.btn-telegram-link:hover {
+    background: #006699;
+    color: white !important;
+    text-decoration: none !important;
+}
+
 .message-header {
     display: flex;
     justify-content: space-between;
@@ -5141,4 +5165,44 @@ input::placeholder {
 
 .stop-btn:active {
     transform: translateY(0);
+}
+
+.keyword-highlight {
+    background: #fff3cd;
+    color: #856404;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+    border: 1px solid #ffeaa7;
+}
+
+.message-detail-text {
+    line-height: 1.6;
+    color: #2c3e50;
+    margin: 10px 0;
+}
+
+/* Стили для кнопки копирования никнеймов вверху */
+.detail-actions-top {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.btn-copy-nicknames {
+    padding: 10px 16px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-copy-nicknames:hover {
+    background: #2ecc71;
 }
