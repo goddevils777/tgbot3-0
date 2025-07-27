@@ -5012,3 +5012,133 @@ input::placeholder {
     background: #fbfbfb;
     border-left: 3px solid #e0e0e0;
 }
+
+.group-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: white;
+}
+
+.group-item label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-left: 10px;
+}
+
+.group-status-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 100px;
+}
+
+.status-new {
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+
+.status-new:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.status-working {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-working:hover {
+    background: #c3e6cb;
+    color: #0f5132;
+}
+
+.group-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: white;
+    gap: 10px;
+}
+
+.group-item input[type="checkbox"] {
+    flex-shrink: 0;
+}
+
+.group-item label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    cursor: pointer;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.group-name {
+    font-weight: 500;
+    color: #2c3e50;
+    margin-bottom: 2px;
+    text-align: left;
+}
+
+.group-username {
+    font-size: 12px;
+    color: #7f8c8d;
+    text-align: left;
+}
+
+.group-status-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.keyword-hint {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #495057;
+    line-height: 1.4;
+}
+
+.keyword-hint strong {
+    color: #2c3e50;
+}
+
+.stop-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 15px;
+    transition: all 0.2s;
+}
+
+.stop-btn:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+}
+
+.stop-btn:active {
+    transform: translateY(0);
+}

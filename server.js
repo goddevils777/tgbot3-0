@@ -351,12 +351,8 @@ app.get('/api/session-info', async (req, res) => {
 // API для получения списка групп
 app.get('/api/groups', async (req, res) => {
     try {
-        // Получаем изолированный SessionManager пользователя
         const sessionManager = await userSessionManager.getUserSessionManager(req.userId, req.userSessionsDir);
-        
-        // Получаем активный клиент
         const activeClient = sessionManager.getActiveClient();
-        console.log('Запрос групп, activeClient:', activeClient ? 'есть' : 'нет');
         
         if (!activeClient) {
             return res.json({ 
@@ -365,7 +361,6 @@ app.get('/api/groups', async (req, res) => {
             });
         }
         
-        // Создаем telegramClientAPI для пользователя
         const telegramClientAPI = await userSessionManager.createUserTelegramClientAPI(req.userId, req.userSessionsDir);
         
         if (!telegramClientAPI) {
@@ -379,9 +374,20 @@ app.get('/api/groups', async (req, res) => {
         res.json({ success: true, groups });
     } catch (error) {
         console.error('Ошибка получения групп:', error);
+        
+        // Обработка ошибки истечения сессии
+        if (error.message === 'TELEGRAM_SESSION_EXPIRED') {
+            return res.json({ 
+                success: false, 
+                error: 'TELEGRAM_SESSION_EXPIRED',
+                message: 'Telegram разлогинил ваш аккаунт. Необходимо пересоздать сессию.' 
+            });
+        }
+        
         res.json({ success: false, error: error.message });
     }
 });
+
 
 // API для получения списка каналов
 app.get('/api/channels', async (req, res) => {
@@ -517,16 +523,15 @@ app.post('/api/check-telegram-link', async (req, res) => {
         });
     }
 });
-
-// API для AI анализа сообщений
+// API для пакетного AI анализа
 app.post('/api/analyze', async (req, res) => {
     try {
-        const { messages, prompt } = req.body;
+        let { messages, prompt, batchSize = 300, batchIndex = 0 } = req.body;
         
-        if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        if (!messages || !Array.isArray(messages)) {
             return res.json({ 
                 success: false, 
-                error: 'Нет сообщений для анализа' 
+                error: 'Сообщения не найдены' 
             });
         }
         
@@ -537,19 +542,61 @@ app.post('/api/analyze', async (req, res) => {
             });
         }
         
-        const aiAnalyzer = new AIAnalyzer();
-        const analysisResult = await aiAnalyzer.analyzeMessages(messages, prompt);
+        // Рассчитываем пакеты
+        const totalMessages = messages.length;
+        const totalBatches = Math.ceil(totalMessages / batchSize);
+        const startIndex = batchIndex * batchSize;
+        const endIndex = Math.min(startIndex + batchSize, totalMessages);
+        const currentBatch = messages.slice(startIndex, endIndex);
         
-        res.json({ 
-            success: true, 
-            analysis: analysisResult // Теперь это объект с filteredMessages и summary
-        });
+        console.log(`AI анализ пакета ${batchIndex + 1}/${totalBatches}: сообщения ${startIndex + 1}-${endIndex} из ${totalMessages}`);
+        
+        // Добавляем задержку между запросами для избежания лимитов
+        if (batchIndex > 0) {
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 секунды между пакетами
+        }
+        
+        try {
+            const aiAnalyzer = new AIAnalyzer();
+            const analysisResult = await aiAnalyzer.analyzeMessages(currentBatch, prompt);
+            
+            res.json({ 
+                success: true, 
+                analysis: analysisResult,
+                batchInfo: {
+                    currentBatch: batchIndex + 1,
+                    totalBatches: totalBatches,
+                    processedCount: endIndex,
+                    totalCount: totalMessages,
+                    hasMore: batchIndex + 1 < totalBatches
+                }
+            });
+            
+        } catch (aiError) {
+            // Если лимит квоты - возвращаем информацию об ошибке
+            if (aiError.message.includes('429') || aiError.message.includes('quota')) {
+                res.json({ 
+                    success: false, 
+                    error: 'Превышен лимит запросов к AI. Попробуйте через несколько минут.',
+                    retryAfter: 300, // 5 минут
+                    batchInfo: {
+                        currentBatch: batchIndex + 1,
+                        totalBatches: totalBatches,
+                        processedCount: startIndex,
+                        totalCount: totalMessages,
+                        hasMore: true
+                    }
+                });
+            } else {
+                throw aiError;
+            }
+        }
+        
     } catch (error) {
         console.error('Ошибка AI анализа:', error);
         res.json({ success: false, error: error.message });
     }
 });
-
 
 // API для автопоиска новых сообщений
 app.post('/api/autosearch', async (req, res) => {
@@ -1977,20 +2024,6 @@ app.post('/api/save-groups', (req, res) => {
     }
 });
 
-// API для получения всех групп из базы
-app.get('/api/groups', (req, res) => {
-    try {
-        const groups = groupsDB.getAllGroups();
-        res.json({ 
-            success: true, 
-            groups: groups,
-            total: groups.length
-        });
-    } catch (error) {
-        console.error('Ошибка получения групп:', error);
-        res.json({ success: false, error: error.message });
-    }
-});
 
 // API для поиска групп в базе
 app.post('/api/search-groups', (req, res) => {
@@ -2235,6 +2268,58 @@ app.get('/api/auto-delete-details/:taskId', async (req, res) => {
     }
 });
 
+// API для получения текущего состояния поиска
+app.get('/api/search-status', (req, res) => {
+    try {
+        const operation = activeTelegramOperations.get(req.userId);
+        
+        if (operation && operation.type === 'search') {
+            res.json({ 
+                success: true, 
+                isActive: true,
+                operation: operation.type,
+                startTime: operation.startTime
+            });
+        } else {
+            res.json({ 
+                success: true, 
+                isActive: false 
+            });
+        }
+    } catch (error) {
+        console.error('Ошибка получения статуса поиска:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
+
+
+// API для остановки поиска
+app.post('/api/stop-search', (req, res) => {
+    try {
+        const operation = activeTelegramOperations.get(req.userId);
+        
+        if (operation && operation.type === 'search') {
+            // Удаляем операцию из активных
+            clearActiveTelegramOperation(req.userId);
+            
+            // Отправляем событие об остановке через WebSocket
+            if (global.io) {
+                global.io.emit(`progress_${req.userId}`, {
+                    type: 'stopped',
+                    message: 'Поиск остановлен пользователем'
+                });
+            }
+            
+            console.log(`Поиск остановлен пользователем ${req.userId}`);
+            res.json({ success: true, message: 'Поиск остановлен' });
+        } else {
+            res.json({ success: false, error: 'Активный поиск не найден' });
+        }
+    } catch (error) {
+        console.error('Ошибка остановки поиска:', error);
+        res.json({ success: false, error: error.message });
+    }
+});
 
 server.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);

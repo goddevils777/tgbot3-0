@@ -6,6 +6,8 @@ const groupsList = document.getElementById('groupsList');
 const results = document.getElementById('results');
 // Массив ключевых слов
 let keywords = [];
+let isSearching = false; // Добавить эту строку
+let currentSearchProgress = null;
 
 
 // WebSocket соединение для получения прогресса
@@ -162,6 +164,7 @@ function handleSearchProgress(data) {
                     loadingContainer.remove();
                 }
             }, 3000);
+            clearSearchState();
             break;
             
         case 'error':
@@ -180,6 +183,32 @@ function handleSearchProgress(data) {
                 const results = document.getElementById('results');
                 results.innerHTML = `<p>Ошибка: ${data.message}</p>`;
             }, 1000);
+            clearSearchState();
+            break;
+
+        case 'stopped':
+            clearInterval(progressAnimationInterval);
+            progressText.textContent = data.message;
+            progressText.style.color = '#f39c12';
+            
+            if (timeEstimate) {
+                timeEstimate.textContent = 'Поиск остановлен пользователем';
+                timeEstimate.style.color = '#f39c12';
+            }
+            
+            // Очищаем состояние
+            isSearching = false;
+            clearSearchState();
+            
+            // Разблокируем кнопку поиска через 2 секунды
+            setTimeout(() => {
+                const searchBtn = document.getElementById('searchBtn');
+                if (searchBtn) searchBtn.disabled = false;
+                
+                const results = document.getElementById('results');
+                results.innerHTML = '<p>Поиск остановлен пользователем</p>';
+            }, 2000);
+            
             break;
     }
 }
@@ -246,16 +275,15 @@ async function logout() {
 
 // Функция добавления ключевого слова
 function addKeyword(word) {
-    const trimmedWord = word.trim().toLowerCase();
-    
-    // Проверяем лимит ключевых слов
-    if (keywords.length >= 10) {
-        notify.warning('Максимум 10 ключевых слов. Удалите лишние.');
+    // Проверяем количество слов (максимум 3 слова = 2 пробела)
+    const wordCount = word.trim().split(/\s+/).length;
+    if (wordCount > 3) {
+        notify.error('Максимум 3 слова в одном ключевике');
         return;
     }
     
-    if (trimmedWord && !keywords.includes(trimmedWord)) {
-        keywords.push(trimmedWord);
+    if (word && !keywords.includes(word)) {
+        keywords.push(word);
         updateKeywordsDisplay();
         saveKeywords();
     }
@@ -410,6 +438,9 @@ searchBtn.addEventListener('click', async () => {
     `;
 
     try {
+
+        notify.success('Поиск запущен! Ожидайте результаты ниже ...');
+        saveSearchState(); 
         // Запускаем поиск на сервере (асинхронно)
         const response = await fetch('/api/search', {
             method: 'POST',
@@ -439,24 +470,32 @@ searchBtn.addEventListener('click', async () => {
 });
 
 // Поиск по нажатию Enter
+// Поиск по нажатию Enter
 searchInput.addEventListener('keypress', (e) => {
     if (e.key === ' ') {
-        e.preventDefault();
-        const word = searchInput.value.trim();
-        if (word) {
-            addKeyword(word);
-            searchInput.value = '';
+        // Считаем количество пробелов в текущем тексте
+        const currentText = searchInput.value.trim();
+        const spaceCount = (currentText.match(/\s/g) || []).length;
+        
+        // Если уже 2 пробела (3 слова), добавляем ключевик
+        if (spaceCount >= 2) {
+            e.preventDefault();
+            const phrase = currentText;
+            if (phrase) {
+                addKeyword(phrase);
+                searchInput.value = '';
+            }
         }
+        // Иначе позволяем добавить пробел
     } else if (e.key === 'Enter') {
-        // Добавляем текущее слово и запускаем поиск
-        const word = searchInput.value.trim();
-        if (word) {
-            addKeyword(word);
+        e.preventDefault();
+        // Добавляем текущую фразу БЕЗ автозапуска поиска
+        const phrase = searchInput.value.trim();
+        if (phrase) {
+            addKeyword(phrase);
             searchInput.value = '';
         }
-        if (keywords.length > 0) {
-            searchBtn.click();
-        }
+        // Убираем автоматический запуск поиска
     }
 });
 
@@ -475,33 +514,55 @@ const testGroups = [
     { id: 4, name: 'Дизайн и UI/UX', username: '@designchat' }
 ];
 
-// Функция отображения групп
 async function displayGroups() {
     try {
         const response = await fetch('/api/groups');
         const data = await response.json();
         
         if (data.success) {
-            groupsList.innerHTML = data.groups.map(group => `
-                <div class="group-item">
-                    <input type="checkbox" id="group-${group.id}" value="${group.id}">
-                    <label for="group-${group.id}">
-                        <span class="group-name">${group.name}</span>
-                        <span class="group-username">${group.type} • ${group.participantsCount || 0} участников</span>
-                    </label>
-                </div>
-            `).join('');
+            groupsList.innerHTML = data.groups.map(group => {
+                const groupStatus = getGroupStatus(group.id);
+                const statusClass = groupStatus === 'Обработано' ? 'status-working' : 'status-new';
+                const buttonText = groupStatus === 'Обработано' ? 'Обработано' : 'Не обработано';
+                
+                return `
+                    <div class="group-item">
+                        <input type="checkbox" id="group-${group.id}" value="${group.id}">
+                        <label for="group-${group.id}">
+                            <span class="group-name">${group.name}</span>
+                            <span class="group-username">${group.type} • ${group.participantsCount || 0} участников</span>
+                        </label>
+                        <button class="group-status-btn ${statusClass}" onclick="toggleGroupStatus('${group.id}')">
+                            ${buttonText}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            if (data.error === 'TELEGRAM_SESSION_EXPIRED') {
+                notify.error('Telegram разлогинил ваш аккаунт. Перейдите в раздел "Сессии" для пересоздания.');
+                updateSessionStatus(false);
+                groupsList.innerHTML = '<p class="no-groups">Нет активной сессии Telegram</p>';
+                return;
+            }
             
-            // Загружаем сохраненные выборы
-            loadSelectedGroups();
+            console.error('Ошибка загрузки групп:', data.error);
+            groupsList.innerHTML = '<p class="no-groups">Ошибка загрузки групп</p>';
+            notify.error(`Ошибка загрузки групп: ${data.error}`);
         }
     } catch (error) {
-        console.error('Ошибка загрузки групп:', error);
+        console.error('Ошибка соединения:', error);
+        groupsList.innerHTML = '<p class="no-groups">Ошибка соединения</p>';
+        notify.error('Ошибка соединения с сервером');
     }
 }
 
+
 // Обработчик кнопки AI анализа
-document.getElementById('analyzeBtn').addEventListener('click', async () => {
+document.getElementById('analyzeBtn').addEventListener('click', analyzeWithAI);
+
+// Пакетный AI анализ с прогрессом
+async function analyzeWithAI() {
     const aiPrompt = document.getElementById('aiPrompt').value.trim();
     const analyzeBtn = document.getElementById('analyzeBtn');
     
@@ -517,70 +578,129 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
         return;
     }
     
-    // Блокируем кнопку и показываем загрузку
-    analyzeBtn.disabled = true;
-    analyzeBtn.textContent = 'Анализирую...';
+    // Показываем прогресс
+    showAIProgress(true);
+    updateAIProgress(0, currentResults.length);
     
     try {
-        const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                messages: currentResults,
-                prompt: aiPrompt
-            })
-        });
+        let allFilteredMessages = [];
+        let batchIndex = 0;
+        const batchSize = 300;
+        let hasMore = true;
         
-        const data = await response.json();
-        console.log('Ответ от сервера:', data);
+        while (hasMore) {
+            analyzeBtn.textContent = `Анализ пакета ${batchIndex + 1}...`;
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messages: currentResults,
+                        prompt: aiPrompt,
+                        batchSize: batchSize,
+                        batchIndex: batchIndex
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Добавляем найденные сообщения
+                    if (data.analysis.filteredMessages) {
+                        allFilteredMessages = allFilteredMessages.concat(data.analysis.filteredMessages);
+                    }
+                    
+                    // Обновляем прогресс
+                    updateAIProgress(data.batchInfo.processedCount, data.batchInfo.totalCount);
+                    
+                    // Показываем промежуточные результаты
+                    if (allFilteredMessages.length > 0) {
+                        displayResults(allFilteredMessages, 'AI фильтрация');
+                        notify.info(`Найдено ${allFilteredMessages.length} релевантных сообщений`);
+                    }
+                    
+                    hasMore = data.batchInfo.hasMore;
+                    batchIndex++;
+                    
+                    // Пауза между пакетами
+                    if (hasMore) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    
+                } else {
+                    if (data.retryAfter) {
+                        notify.warning(`${data.error} Найдено ${allFilteredMessages.length} сообщений из обработанных.`);
+                        break;
+                    } else {
+                        throw new Error(data.error);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Ошибка пакета:', error);
+                notify.error(`Ошибка обработки пакета ${batchIndex + 1}: ${error.message}`);
+                break;
+            }
+        }
+        
+        // Финальные результаты
+        if (allFilteredMessages.length > 0) {
+            window.lastSearchResults = allFilteredMessages; // Заменяем на отфильтрованные
+            displayResults(allFilteredMessages, 'AI фильтрация');
+            notify.success(`AI анализ завершен! Найдено ${allFilteredMessages.length} релевантных сообщений`);
+            document.getElementById('saveToHistory').style.display = 'block';
+        } else {
+            notify.warning('AI не нашел релевантных сообщений по вашему запросу');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка AI анализа:', error);
+        notify.error(`Ошибка анализа: ${error.message}`);
+    } finally {
+        showAIProgress(false);
+        analyzeBtn.textContent = 'Анализировать через AI';
+        analyzeBtn.disabled = false;
+    }
+}
 
-        
-    if (data.success) {
-        const results = document.getElementById('results');
-        
-        // Показываем сводку
-        results.innerHTML += `
-            <div class="ai-analysis-result">
-                <h3>Результат AI фильтрации:</h3>
-                <div class="analysis-summary">${data.analysis.summary}</div>
+// Показ прогресса AI анализа
+function showAIProgress(show) {
+    let progressDiv = document.getElementById('aiProgress');
+    
+    if (show && !progressDiv) {
+        progressDiv = document.createElement('div');
+        progressDiv.id = 'aiProgress';
+        progressDiv.innerHTML = `
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span>🤖 AI анализ сообщений...</span>
+                    <span id="aiProgressText">0/0</span>
+                </div>
+                <div style="background: #e9ecef; border-radius: 10px; overflow: hidden;">
+                    <div id="aiProgressBar" style="background: #007bff; height: 8px; width: 0%; transition: width 0.3s;"></div>
+                </div>
             </div>
         `;
-        
-        // Если есть отфильтрованные сообщения - показываем их
-        if (data.analysis.filteredMessages && data.analysis.filteredMessages.length > 0) {
-            // Обновляем глобальную переменную для сохранения в историю
-            window.lastSearchResults = data.analysis.filteredMessages;
-            
-            // Показываем отфильтрованные сообщения
-
-            // Показываем отфильтрованные сообщения
-            displayResults(data.analysis.filteredMessages, 'AI фильтрация');
-
-            // Обновляем заголовок результатов
-            const resultsSection = document.querySelector('.results-section h2');
-            if (resultsSection) {
-                resultsSection.textContent = `🤖 Результаты AI фильтрации (${data.analysis.filteredCount} из ${data.analysis.originalCount})`;
-            }
-            
-            // Показываем кнопки
-            const saveButton = document.getElementById('saveToHistory');
-            const clearButton = document.getElementById('clearResultsBtn');
-            
-            if (saveButton) saveButton.style.display = 'block';
-            if (clearButton) clearButton.style.display = 'block';
-        }
-    } else {
-       notify.error(`Ошибка AI анализа: ${data.error}`);
+        document.getElementById('results').parentNode.insertBefore(progressDiv, document.getElementById('results'));
+    } else if (!show && progressDiv) {
+        progressDiv.remove();
     }
-    } catch (error) {
-        notify.error(`Ошибка соединения: ${error.message}`);
-    } finally {
-        analyzeBtn.disabled = false;
-        analyzeBtn.textContent = 'Анализировать через AI';
+}
+
+// Обновление прогресса
+function updateAIProgress(processed, total) {
+    const progressText = document.getElementById('aiProgressText');
+    const progressBar = document.getElementById('aiProgressBar');
+    
+    if (progressText && progressBar) {
+        const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+        progressText.textContent = `${processed}/${total} (${percent}%)`;
+        progressBar.style.width = `${percent}%`;
     }
-});
+}
 
 
 // Функция загрузки информации о сессии
@@ -615,6 +735,7 @@ async function loadSessionInfo() {
     await loadSessionInfo();
     await displayGroups();
     loadLastResults();
+    loadSearchState();
 })();
 
 // Функция получения выбранных групп
@@ -831,6 +952,20 @@ function saveSearchToHistory() {
     console.log('Результаты поиска сохранены с ID:', savedId);
 }
 
+// Функция обновления статуса сессии на странице
+function updateSessionStatus(isActive) {
+    const sessionInfoDiv = document.getElementById('sessionInfo');
+    
+    if (!sessionInfoDiv) return;
+    
+    if (isActive) {
+        sessionInfoDiv.innerHTML = '<span>Сессия активна</span>';
+        sessionInfoDiv.className = 'session-info';
+    } else {
+        sessionInfoDiv.innerHTML = '<span class="session-warning">⚠️ Сессия неактивна - требуется пересоздание</span>';
+        sessionInfoDiv.className = 'session-info no-session';
+    }
+}
 
 
 
@@ -936,4 +1071,138 @@ function startProgressUpdates(totalGroups) {
     
     // Сохраняем интервал для очистки
     window.searchProgressInterval = interval;
+}
+
+// Функции для работы со статусами групп
+function getGroupStatus(groupId) {
+    const statuses = JSON.parse(localStorage.getItem('groupStatuses') || '{}');
+    return statuses[groupId] || 'Не обработано';
+}
+
+function setGroupStatus(groupId, status) {
+    const statuses = JSON.parse(localStorage.getItem('groupStatuses') || '{}');
+    statuses[groupId] = status;
+    localStorage.setItem('groupStatuses', JSON.stringify(statuses));
+}
+
+function toggleGroupStatus(groupId) {
+    const currentStatus = getGroupStatus(groupId);
+    const newStatus = currentStatus === 'Обработано' ? 'Не обработано' : 'Обработано';
+    
+    setGroupStatus(groupId, newStatus);
+    
+    // Обновляем кнопку
+    const button = document.querySelector(`button[onclick="toggleGroupStatus('${groupId}')"]`);
+    if (button) {
+        button.textContent = newStatus;
+        button.className = `group-status-btn ${newStatus === 'Обработано' ? 'status-working' : 'status-new'}`;
+    }
+    
+    // Показываем уведомление
+    notify.success(`Статус группы изменен на: ${newStatus}`);
+}
+
+function saveSearchState() {
+    const searchState = {
+        isSearching: true, // Всегда true при сохранении
+        searchStartTime: searchStartTime || Date.now(),
+        totalGroups: currentSearchProgress ? currentSearchProgress.totalGroups : 0,
+        processedGroups: currentSearchProgress ? currentSearchProgress.processedGroups : 0,
+        keywords: keywords,
+        selectedGroups: getSelectedGroups()
+    };
+    console.log('Сохраняем состояние поиска:', searchState);
+    localStorage.setItem('searchState', JSON.stringify(searchState));
+}
+
+
+async function loadSearchState() {
+    console.log('=== Попытка загрузить состояние поиска ===');
+    const savedState = localStorage.getItem('searchState');
+    console.log('Сохраненное состояние:', savedState);
+    
+    if (savedState) {
+        const state = JSON.parse(savedState);
+        console.log('Парсенное состояние:', state);
+        if (state.isSearching) {
+            // Проверяем реальный статус на сервере
+            try {
+                const response = await fetch('/api/search-status');
+                const serverStatus = await response.json();
+                
+                if (serverStatus.success && serverStatus.isActive) {
+                    console.log('Сервер подтверждает активный поиск');
+                    
+                    isSearching = true;
+                    searchStartTime = state.searchStartTime;
+                    
+                    // Восстанавливаем ключевые слова и группы
+                    if (state.keywords) {
+                        keywords = state.keywords;
+                        updateKeywordsDisplay();
+                    }
+                    
+                    // Создаем элементы прогресса
+                    const results = document.getElementById('results');
+                    results.innerHTML = `
+                        <div class="loading-container">
+                            <div class="loader"></div>
+                            <p id="searchProgress">Поиск продолжается...</p>
+                            <div id="progressBar" style="width: 100%; background: #f0f0f0; border-radius: 10px; margin: 10px 0;">
+                                <div id="progressFill" style="width: 50%; height: 20px; background: linear-gradient(90deg, #3498db, #2ecc71); border-radius: 10px; transition: width 0.1s ease;"></div>
+                            </div>
+                            <p id="progressText">Восстановлен активный поиск</p>
+                            <p id="timeEstimate" style="font-size: 12px; color: #666; margin: 5px 0;">Ожидание обновлений...</p>
+                            <button id="stopSearchBtn" class="stop-btn" onclick="stopCurrentSearch()">Остановить поиск</button>
+                        </div>
+                    `;
+                    
+                    // Блокируем кнопку поиска
+                    const searchBtn = document.getElementById('searchBtn');
+                    if (searchBtn) searchBtn.disabled = true;
+                    
+                    console.log('Восстановлено состояние поиска с прогресс-баром');
+                } else {
+                    console.log('Сервер не подтверждает активный поиск, очищаем состояние');
+                    clearSearchState();
+                }
+            } catch (error) {
+                console.error('Ошибка проверки статуса на сервере:', error);
+                clearSearchState();
+            }
+        }
+    }
+}
+
+// Функция остановки текущего поиска
+function stopCurrentSearch() {
+    console.log('Остановка поиска пользователем');
+    
+    // Сбрасываем состояние
+    isSearching = false;
+    clearSearchState();
+    
+    // Очищаем прогресс
+    const results = document.getElementById('results');
+    results.innerHTML = '<p>Поиск остановлен пользователем</p>';
+    
+    // Разблокируем кнопку поиска
+    const searchBtn = document.getElementById('searchBtn');
+    if (searchBtn) searchBtn.disabled = false;
+    
+    // Отправляем запрос на сервер для остановки поиска
+    fetch('/api/stop-search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).catch(error => {
+        console.error('Ошибка остановки поиска на сервере:', error);
+    });
+    
+    notify.success('Поиск остановлен');
+}
+
+function clearSearchState() {
+    localStorage.removeItem('searchState');
 }

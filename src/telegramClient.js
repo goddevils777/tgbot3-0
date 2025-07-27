@@ -32,50 +32,76 @@ class TelegramClientAPI {
         }
     }
     
-    async getChats() {
-       
-       
-        
-        if (!this.isConnected) {
-            console.log('Клиент не подключен, возвращаем пустой массив');
-            return [];
-        }
-
-        try {
-            
+   async getChats() {
+    console.log('=== НАЧАЛО getChats ===');
+    console.log('isConnected:', this.isConnected);
     
+    if (!this.isConnected) {
+        console.log('Клиент не подключен, возвращаем пустой массив');
+        return [];
+    }
 
-            // Используем правильную проверку
-            // Используем правильную проверку
-            if (!this.client._connected) {
-                console.log('Клиент отключен, создаем новый клиент с той же сессией...');
-                
-                // Получаем сессию из текущего клиента
-                const sessionString = this.client.session.save();
-                console.log('SessionString получен, длина:', sessionString.length);
-                
-                // Создаем новый клиент с той же сессией
-                const { StringSession } = require('telegram/sessions');
-                const session = new StringSession(sessionString);
-                const newClient = new TelegramClient(session, config.apiId, config.apiHash, {
-                    connectionRetries: 5,
-                });
-                
-                await newClient.connect();
-                this.client = newClient; // Заменяем клиент
-                console.log('Новый клиент создан и подключен');
-            }
+    try {
+        console.log('client._connected:', this.client._connected);
+        
+        if (!this.client._connected) {
+            console.log('Клиент отключен, создаем новый клиент с той же сессией...');
             
-            const dialogs = await this.client.getDialogs();
-  
-            const chats = [];
+            const sessionString = this.client.session.save();
+            console.log('SessionString получен, длина:', sessionString.length);
             
-            for (const dialog of dialogs) {
-       
-                // Проверяем, можно ли писать в чат
-                if (dialog.entity && !dialog.entity.left && !dialog.entity.kicked) {
-                    if (dialog.isGroup || (dialog.isChannel && !dialog.entity.broadcast)) {
-                        // Получаем информацию о количестве участников
+            const { StringSession } = require('telegram/sessions');
+            const session = new StringSession(sessionString);
+            const newClient = new TelegramClient(session, config.apiId, config.apiHash, {
+                connectionRetries: 5,
+            });
+            
+            await newClient.connect();
+            this.client = newClient;
+            console.log('Новый клиент создан и подключен');
+        }
+        
+        console.log('Получаем диалоги...');
+        const dialogs = await this.client.getDialogs();
+        console.log('Количество диалогов:', dialogs.length);
+        
+        const chats = [];
+        
+        for (const dialog of dialogs) {
+            console.log('Обрабатываем диалог:', dialog.title, 'isGroup:', dialog.isGroup, 'isChannel:', dialog.isChannel);
+            
+            if (dialog.entity && !dialog.entity.left && !dialog.entity.kicked) {
+                if (dialog.isGroup && !dialog.isChannel) {
+                    console.log('Найдена группа:', dialog.title);
+                    
+                    let participantsCount = 0;
+                    try {
+                        if (dialog.entity.participantsCount) {
+                            participantsCount = dialog.entity.participantsCount;
+                        } else if (dialog.entity.membersCount) {
+                            participantsCount = dialog.entity.membersCount;
+                        }
+                    } catch (e) {
+                        try {
+                            const fullGroup = await this.client.getEntity(dialog.id);
+                            participantsCount = fullGroup.participantsCount || fullGroup.membersCount || 0;
+                        } catch (err) {
+                            participantsCount = 0;
+                        }
+                    }
+
+                    chats.push({
+                        id: dialog.id,
+                        name: dialog.title || dialog.name,
+                        type: 'group',
+                        participantsCount: participantsCount
+                    });
+                }
+                
+                if (dialog.isChannel && dialog.entity && !dialog.entity.left && !dialog.entity.kicked) {
+                    if (!dialog.entity.broadcast) {
+                        console.log('Найдена супергруппа:', dialog.title);
+                        
                         let participantsCount = 0;
                         try {
                             if (dialog.entity.participantsCount) {
@@ -85,32 +111,38 @@ class TelegramClientAPI {
                             }
                         } catch (e) {
                             try {
-                                const fullChat = await this.client.getEntity(dialog.id);
-                                participantsCount = fullChat.participantsCount || fullChat.membersCount || 0;
+                                const fullChannel = await this.client.getEntity(dialog.id);
+                                participantsCount = fullChannel.participantsCount || fullChannel.membersCount || 0;
                             } catch (err) {
                                 participantsCount = 0;
                             }
                         }
 
-                        // Показываем только группы с участниками
-                        if (participantsCount > 0) {
-                            chats.push({
-                                id: dialog.id,
-                                name: dialog.title || dialog.name,
-                                type: dialog.isGroup ? 'group' : 'channel',
-                                participantsCount: participantsCount
-                            });
-                        }
+                        chats.push({
+                            id: dialog.id,
+                            name: dialog.title || dialog.name,
+                            type: dialog.isGroup ? 'group' : 'channel',
+                            participantsCount: participantsCount
+                        });
                     }
                 }
             }
-            
-            return chats;
-        } catch (error) {
-            console.error('Ошибка получения чатов:', error);
-            return [];
         }
+        
+        console.log('=== КОНЕЦ getChats, найдено чатов:', chats.length, '===');
+        return chats;
+    } catch (error) {
+        console.error('=== ОШИБКА getChats ===', error);
+        
+        if (error.errorMessage === 'AUTH_KEY_DUPLICATED' || error.code === 406) {
+            console.log('Обнаружена ошибка AUTH_KEY_DUPLICATED - аккаунт разлогинен');
+            this.isConnected = false;
+            throw new Error('TELEGRAM_SESSION_EXPIRED');
+        }
+        
+        return [];
     }
+}
 
     async getChannels() {
         if (!this.isConnected) {
@@ -214,6 +246,7 @@ class TelegramClientAPI {
                 
                 let foundInGroup = 0;
                 for (const message of messages) {
+
                     // Пропускаем служебные сообщения
                     if (message.className === 'MessageService') {
                         continue;
@@ -236,13 +269,14 @@ class TelegramClientAPI {
                     const containsKeyword = keywords.some(keyword => {
                         const keywordLower = keyword.toLowerCase().trim();
                         
-                        // Ищем как отдельное слово с учётом русских символов
-                        const patterns = [
-                            new RegExp(`(^|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])${keywordLower}($|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])`, 'i'),
-                            keywordLower.length <= 3 ? new RegExp(`\\s${keywordLower}\\s`, 'i') : null
-                        ].filter(Boolean);
-                        
-                        return patterns.some(pattern => pattern.test(' ' + lowerMessageText + ' '));
+                        // Для фраз из нескольких слов ищем точное совпадение
+                        if (keywordLower.includes(' ')) {
+                            return lowerMessageText.includes(keywordLower);
+                        } else {
+                            // Для одного слова ищем как отдельное слово
+                            const pattern = new RegExp(`(^|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])(${keywordLower})($|[\\s\\n\\r\\t.,!?;:'"(){}\\[\\]<>«»""\\/\\-])`, 'i');
+                            return pattern.test(' ' + lowerMessageText + ' ');
+                        }
                     });
                     
                     if (containsKeyword) {

@@ -66,6 +66,11 @@ class AIAnalyzer {
             };
             
         } catch (error) {
+
+            // Обработка превышения квоты
+            if (error.status === 429) {
+                throw new Error('QUOTA_EXCEEDED: Превышен лимит запросов к Google AI API. Попробуйте позже или обновите план.');
+            }
             console.error('Ошибка анализа AI:', error);
             throw error;
         }
